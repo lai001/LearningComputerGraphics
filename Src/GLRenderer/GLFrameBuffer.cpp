@@ -1,8 +1,8 @@
 #include "GLFrameBuffer.h"
 #include "ThirdParty/spdlog.h"
 
-FGLFrameBuffer::FGLFrameBuffer(int Width, int Height, std::string VertexShaderPath, std::string FragmentShaderPath)
-	:Width(Width), Height(Height), VertexShaderPath(VertexShaderPath), FragmentShaderPath(FragmentShaderPath)
+FGLFrameBuffer::FGLFrameBuffer(int Width, int Height)
+	:Width(Width), Height(Height)
 {
 	glGenFramebuffers(1, &RendererID);
 	glBindFramebuffer(GL_FRAMEBUFFER, RendererID);
@@ -15,6 +15,8 @@ FGLFrameBuffer::FGLFrameBuffer(int Width, int Height, std::string VertexShaderPa
 	Layout.Push<float>(2);
 	Layout.Push<float>(2);
 	Vao->AddBuffer(Vbo, Layout);
+	const std::string VertexShaderPath = FGLShader::GetShadersFolder().append("/GLFramebuffers.vert");
+	const std::string FragmentShaderPath = FGLShader::GetShadersFolder().append("/GLFramebuffers.frag");
 	this->Shader = new FGLShader(VertexShaderPath, FragmentShaderPath);
 }
 

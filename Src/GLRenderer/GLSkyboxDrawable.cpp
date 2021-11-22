@@ -10,8 +10,9 @@ FGLSkyboxDrawable::FGLSkyboxDrawable(FSkyBox* Skybox)
 	FGLVertexBufferLayout Layout;
 	Layout.Push<float>(3);
 	Vao->AddBuffer(Vbo, Layout);
-
-	this->Shader = new FGLShader(Skybox->VertexShaderPath, Skybox->FragmentShaderPath);
+	const std::string VertexShaderPath = FGLShader::GetShadersFolder().append("/GLSkybox.vert");
+	const std::string FragmentShaderPath = FGLShader::GetShadersFolder().append("/GLSkybox.frag");
+	this->Shader = new FGLShader(VertexShaderPath, FragmentShaderPath);
 	LoadSkyBox();
 }
 

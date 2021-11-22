@@ -61,4 +61,3 @@ public:
 	const GLInfo GetGLInfo();
 
 };
-

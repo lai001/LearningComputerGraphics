@@ -46,8 +46,6 @@ private:
 public:
 	std::vector<FSkeletionSubMesh*> SubMeshs;
 
-	std::string	VertexShaderFilePath;
-	std::string FragmentShaderFilePath;
 	std::string ModelFilePath;
 
 	glm::mat4 Model;

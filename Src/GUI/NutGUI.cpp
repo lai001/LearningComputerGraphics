@@ -45,7 +45,7 @@ void FNutGUI::Render(float RunningTime)
 	ImGui::Text("Cut off %.3f", glm::cos(glm::radians(10.5f)));
 	ImGui::Text("Cut out off %.3f", glm::cos(glm::radians(12.5f)));
 	ImGui::Text("Time %.3f", RunningTime);
-	ImGui::SliderFloat3("Light position", &PointLightPositionX, -10.0f, 10.0f);
+	ImGui::SliderFloat3("Light position", &PointLightPosition.x, -10.0f, 10.0f);
 	ImGui::SliderInt("PostProcessing", &PostProcessing, 0, 5);
 	ImGui::SliderFloat("Animation speed", &ModelAnimationSpeed, 0.0f, 10.0f);
 	ImGui::Checkbox("Binding post", &BindingPostEnable);

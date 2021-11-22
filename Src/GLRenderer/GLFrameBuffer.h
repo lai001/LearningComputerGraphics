@@ -29,9 +29,9 @@ private:
 
 	int Height;
 
-	std::string VertexShaderPath;
+	//std::string VertexShaderPath;
 
-	std::string FragmentShaderPath;
+	//std::string FragmentShaderPath;
 
 	FGLVertexArray* Vao;
 
@@ -56,7 +56,7 @@ private:
 	static void ClearBuffer(unsigned char ClearBufferFlags);
 
 public:
-	FGLFrameBuffer(int Width, int Height, std::string VertexShaderPath, std::string FragmentShaderPath);
+	FGLFrameBuffer(int Width, int Height);
 	~FGLFrameBuffer();
 
 	int PostProcessing = 0;

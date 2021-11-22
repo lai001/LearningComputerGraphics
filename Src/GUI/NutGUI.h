@@ -12,7 +12,7 @@ public:
 
 public:
 
-	float PointLightPositionX = 0.0f;
+	glm::vec3 PointLightPosition = glm::vec3(0.0f);
 	float CurrentFOV = 0.0f;
 	float CurrentCameraSpeed = 0.0f;
 	int PostProcessing = 0;

@@ -11,12 +11,16 @@ private:
 	std::string VertexFilepath;
 	std::string FragmentFilepath;
 	std::unordered_map<std::string, int> UniformLocationCache;
+	static std::string ShadersFolder;
 
 public:
 	FGLShader(const std::string & Vertexfilepath, const std::string & Fragmentfilepath);
 	~FGLShader();
 
 	unsigned int RendererID;
+
+	static std::string GetShadersFolder();
+	static void SetShadersFolder(const std::string& Filepath);
 
 	void Bind() const;
 	void Unbind();
@@ -39,5 +43,5 @@ public:
 	void SetShininess(float Shininess);
 	void SetBoneTransform(std::vector<glm::mat4> Transforms);
 	void SetTexture(aiTextureType Type, int Slot);
+	void SetViewPosition(const glm::vec3& ViewPosition);
 };
-

@@ -9,7 +9,9 @@ FGLStaticMeshDrawable::FGLStaticMeshDrawable( FStaticMesh * Mesh)
 		FGLStaticSubMeshDrawable* SubMeshDrawable = new FGLStaticSubMeshDrawable(SubMesh);
 		SubMeshDrawables.push_back(SubMeshDrawable);
 	}
-	Shader = new FGLShader(Mesh->VertexShaderFilePath, Mesh->FragmentShaderFilePath);
+	const std::string VertexShaderPath = FGLShader::GetShadersFolder().append("/GLStaticMesh.vert");
+	const std::string FragmentShaderPath = FGLShader::GetShadersFolder().append("/GLStaticMesh.frag");
+	Shader = new FGLShader(VertexShaderPath, FragmentShaderPath);
 }
 
 FGLStaticMeshDrawable::~FGLStaticMeshDrawable()
@@ -33,6 +35,7 @@ void FGLStaticMeshDrawable::Draw()
 	Shader->SetLight(LightingSystem->DirLight, LightingSystem->PointLight, LightingSystem->SpotLight);
 	Shader->SetSpotLightEnable(LightingSystem->bIsSpotLightEnable);
 	Shader->SetShininess(32.0f);
+	Shader->SetViewPosition(LightingSystem->ViewPosition);
 
 	for (int i = 0; i < SubMeshDrawables.size(); i++)
 	{

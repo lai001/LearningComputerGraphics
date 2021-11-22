@@ -6,6 +6,10 @@
 #include "ThirdParty/spdlog.h"
 #include "glad/glad.h"
 
+#include "GLPreProcessor.h"
+
+std::string FGLShader::ShadersFolder = "";
+
 FGLShader::FGLShader(const std::string & VertexFilepath, const std::string & FragmentFilepath)
 	: VertexFilepath(VertexFilepath), FragmentFilepath(FragmentFilepath), RendererID(0)
 {
@@ -18,6 +22,16 @@ FGLShader::FGLShader(const std::string & VertexFilepath, const std::string & Fra
 FGLShader::~FGLShader()
 {
 	glDeleteProgram(RendererID);
+}
+
+std::string FGLShader::GetShadersFolder()
+{
+	return ShadersFolder;
+}
+
+void FGLShader::SetShadersFolder(const std::string & Filepath)
+{
+	ShadersFolder = Filepath;
 }
 
 void FGLShader::Bind() const
@@ -95,7 +109,8 @@ std::string FGLShader::ParseShader(const std::string & Filepath)
 	{
 		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ IN FILE: " << Filepath << std::endl;
 	}
-	return SourceShader;
+
+	return GLPreProcessor::Process(SourceShader);
 }
 
 void FGLShader::SetUniform4f(const std::string& Name, float V0, float V1, float V2, float V3)
@@ -263,4 +278,9 @@ void FGLShader::SetTexture(aiTextureType Type, int Slot)
 	default:
 		break;
 	}
+}
+
+void FGLShader::SetViewPosition(const glm::vec3 & ViewPosition)
+{
+	SetUniform3fv("viewPos", ViewPosition);
 }

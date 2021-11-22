@@ -309,7 +309,7 @@ glm::mat4 FSkeletonMesh::CalcInterpolatedRotation(float AnimationTime, const aiN
 
 	glm::quat StartRotationQ = ConvertQuat(&NodeAnim->mRotationKeys[RotationIndex].mValue);
 	glm::quat EndRotationQ = ConvertQuat(&NodeAnim->mRotationKeys[NextRotationIndex].mValue);
-
+	return glm::transpose(glm::mat4_cast(glm::slerp(StartRotationQ, EndRotationQ, Factor)));
 	glm::mat4 Result = glm::interpolate(glm::mat4_cast(StartRotationQ), glm::mat4_cast(EndRotationQ), Factor);
 	return 	glm::transpose(Result);
 }

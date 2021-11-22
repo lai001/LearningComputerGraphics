@@ -9,7 +9,10 @@ FGLSkeletonMeshDrawable::FGLSkeletonMeshDrawable(FSkeletonMesh * Mesh)
 		FGLSkeletonSubMeshDrawable* SubMeshDrawable = new FGLSkeletonSubMeshDrawable(SubMesh);
 		SubMeshDrawables.push_back(SubMeshDrawable);
 	}
-	Shader = new FGLShader(Mesh->VertexShaderFilePath, Mesh->FragmentShaderFilePath);
+	
+	const std::string VertexShaderFilePath = FGLShader::GetShadersFolder().append("/GLSkeletonMesh.vert");
+	const std::string FragmentShaderFilePath = FGLShader::GetShadersFolder().append("/GLSkeletonMesh.frag");
+	Shader = new FGLShader(VertexShaderFilePath, FragmentShaderFilePath);
 }
 
 FGLSkeletonMeshDrawable::~FGLSkeletonMeshDrawable()
@@ -29,6 +32,7 @@ void FGLSkeletonMeshDrawable::Draw()
 	Shader->SetLight(LightingSystem->DirLight, LightingSystem->PointLight, LightingSystem->SpotLight);
 	Shader->SetSpotLightEnable(LightingSystem->bIsSpotLightEnable);
 	Shader->SetShininess(32.0f);
+	Shader->SetViewPosition(LightingSystem->ViewPosition);
 
 	for (int i = 0; i < SubMeshDrawables.size(); i++)
 	{

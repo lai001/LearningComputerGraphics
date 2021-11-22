@@ -14,7 +14,7 @@ FApp::FApp(int arg, char** args)
 	FileManager = new FFileManager(arg, args);
 	spdlog::set_level(spdlog::level::trace);
 	spdlog::debug(FileManager->GetResouceDir());
-
+	FGLShader::SetShadersFolder(FileManager->GetResourcePath("GLShaders"));
 	GLRenderer = new FGLRenderer(1280, 720, "Nut");
 	InputCenter = GLRenderer->GetInputCenter();
 	LightingSystem = new FLightingSystem();
@@ -36,12 +36,9 @@ FApp::FApp(int arg, char** args)
 	spdlog::debug("{}, {}, {}", Info.Version, Info.Vendor, Info.Renderer);
 
 	{
-		Mesh = new FStaticMesh(FileManager->GetResourcePath("untitled.dae"));
-		Mesh->VertexShaderFilePath = FileManager->GetResourcePath("GLShaders/GLStaticMesh.vert");
-		Mesh->FragmentShaderFilePath = FileManager->GetResourcePath("GLShaders/GLStaticMesh.frag");
+		Mesh = new FStaticMesh(FileManager->GetResourcePath("Character.dae"));
 
-		glm::mat4 Model;
-		Model = glm::translate(Model, LightingSystem->PointLight.Position);
+		glm::mat4 Model(1.0);
 		Model = glm::translate(Model, glm::vec3(0, 1.0, 0));
 		Model = glm::scale(Model, glm::vec3(0.2f));
 
@@ -62,24 +59,18 @@ FApp::FApp(int arg, char** args)
 			FileManager->GetResourcePath("skybox/back.png")
 		};
 
-		Skybox = new FSkyBox(SkyBoxFilePaths,
-			FileManager->GetResourcePath("GLShaders/GLSkybox.vert"),
-			FileManager->GetResourcePath("GLShaders/GLSkybox.frag"));
+		Skybox = new FSkyBox(SkyBoxFilePaths);
 		SkyboxDrawable = new FGLSkyboxDrawable(Skybox);
 	}
 
 	{
-		FrameBuffer = new FGLFrameBuffer(1280, 720,
-			FileManager->GetResourcePath("GLShaders/GLFramebuffers.vert"),
-			FileManager->GetResourcePath("GLShaders/GLFramebuffers.frag"));
+		FrameBuffer = new FGLFrameBuffer(1280, 720);
 		FrameBuffer->ClearColor = glm::vec4(0.3f, 0.4f, 0.5f, 1.0f);
 		FrameBuffer->ClearBufferFlags = EClearBufferFlags::Color | EClearBufferFlags::Depth;
 	}
 
 	{
 		SkeletonMesh = new FSkeletonMesh(FileManager->GetResourcePath("skeletal_animation/model.dae"));
-		SkeletonMesh->VertexShaderFilePath = FileManager->GetResourcePath("GLShaders/GLSkeletonMesh.vert");
-		SkeletonMesh->FragmentShaderFilePath = FileManager->GetResourcePath("GLShaders/GLSkeletonMesh.frag");
 
 		glm::mat4 Model = glm::mat4(1.0f);
 		Model = glm::translate(Model, glm::vec3(0.0f, -0.9f, 0.0f));
@@ -113,9 +104,11 @@ FApp::~FApp()
 
 void FApp::Tick(GLFWwindow * Window, double RunningTime)
 {
+	LightingSystem->PointLight.Position = NutGUI->PointLightPosition;
 	LightingSystem->SpotLight.Position = Camera->GetPosition();
 	LightingSystem->SpotLight.Direction = Camera->GetCameraFront();
 	LightingSystem->bIsSpotLightEnable = bIsSpotLightEnable;
+	LightingSystem->ViewPosition = Camera->GetPosition();
 
 	NutGUI->CurrentFOV = Camera->GetFov();
 	NutGUI->CurrentCameraSpeed = Camera->GetCameraSpeed();

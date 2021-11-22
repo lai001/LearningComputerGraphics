@@ -28,8 +28,6 @@ protected:
 public:
 	std::vector<FStaticSubMesh*> SubMeshs;
 
-	std::string	VertexShaderFilePath;
-	std::string FragmentShaderFilePath;
 	std::string ModelFilePath;
 
 	glm::mat4 Model;
