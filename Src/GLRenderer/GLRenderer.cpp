@@ -4,13 +4,14 @@
 FGLRenderer::FGLRenderer(int Width, int Height, const char * Title)
 	:ScreenWidth(Width), ScreenHeight(Height)
 {
-	glfwInit();
+	assert(glfwInit());
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	Window = glfwCreateWindow(Width, Height, Title, NULL, NULL);
+	assert(Window);
 	InputCenter = new FGLInputCenter(Window);
 
 	SwapInterval(1);
@@ -87,10 +88,10 @@ void FGLRenderer::StartMainLoop()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		for (std::vector<IGLRunLoop*>::iterator Iter = RunLoops.begin(); Iter != RunLoops.end(); Iter++)
+		double Time = glfwGetTime();
+		for (IGLRunLoop* RunLoop : RunLoops)
 		{
-			double Time = glfwGetTime();
-			(*Iter)->Tick(Window, Time);
+			RunLoop->Tick(*Window, Time);
 		}
 
 		InputCenter->ContiguousInput();
@@ -113,11 +114,13 @@ void FGLRenderer::SetWindowShouldClose()
 
 void FGLRenderer::AddRunLoop(IGLRunLoop * RunLoop)
 {
+	assert(RunLoop);
 	RunLoops.push_back(RunLoop);
 }
 
 void FGLRenderer::RemoveRunLoop(IGLRunLoop * RunLoop)
 {
+	assert(RunLoop);
 	for (std::vector<IGLRunLoop*>::iterator Iter = RunLoops.begin(); Iter != RunLoops.end();)
 	{
 		if (*Iter == RunLoop)

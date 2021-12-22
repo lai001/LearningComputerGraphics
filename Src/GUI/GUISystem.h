@@ -18,8 +18,7 @@ public:
 	IGUIInterface* Interface;
 
 	const GLFWwindow* GetWindow();
-	void Update();
 
-	virtual void Tick(GLFWwindow * Window, double RunningTime) override;
+	virtual void Tick(const GLFWwindow& Window, double RunningTime) override;
 };
 

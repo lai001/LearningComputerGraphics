@@ -1,11 +1,13 @@
 #pragma once
 #include <string>
 #include <functional>
+#include <array>
 #include "ThirdParty/opengl.h"
 #include "ThirdParty/glm.h"
-#include "ThirdParty/bitmask_operators.hpp"
-#include "GLVertexArray.h"
+#include "ThirdParty/noncopyable.hpp"
 #include "GLShader.h"
+#include "GLTexture.h"
+#include "GLVertexObject.h"
 
 enum EClearBufferFlags
 {
@@ -15,48 +17,29 @@ enum EClearBufferFlags
 	Stencil = 1 << 3
 };
 
-class FGLFrameBuffer
+class FGLFrameBuffer: public boost::noncopyable
 {
 
 private:
-	unsigned int RendererID;
+	unsigned int FramebufferID;
 
-	unsigned int ColorTexture;
-
-	unsigned int Rbo;
+	unsigned int RenderbuffersID;
 
 	int Width;
 
 	int Height;
 
-	//std::string VertexShaderPath;
-
-	//std::string FragmentShaderPath;
-
-	FGLVertexArray* Vao;
-
-	FGLVertexBuffer* Vbo;
+	FGLVertexObject* VertexObject;
 
 	FGLShader* Shader;
 
-	float StandardUVMapVertices[24] = {
-	 0.5f,  1.0f,  0.0f, 1.0f,
-	 0.5,   0.5f,  0.0f, 0.0f,
-	 1.0f,  0.5f,  1.0f, 0.0f,
+	FGLTexture* ColorTexture;
 
-	 0.5f,  1.0f,  0.0f, 1.0f,
-	 1.0f,  0.5f,  1.0f, 0.0f,
-	 1.0f,  1.0f,  1.0f, 1.0f
-	};
-
-	void Draw();
-
-	static void GLClearColor(glm::vec4 Color);
-
-	static void ClearBuffer(unsigned char ClearBufferFlags);
+	std::array<float, 24> Vertices;
 
 public:
-	FGLFrameBuffer(int Width, int Height);
+	FGLFrameBuffer(const int Width, const int Height, const glm::vec2 TopLeft, const glm::vec2 Size);
+
 	~FGLFrameBuffer();
 
 	int PostProcessing = 0;
@@ -67,13 +50,24 @@ public:
 
 	void Unbind();
 
-	void Bind(std::function<void()> RenderClosure);
+	void Bind();
 
 	void AddColorAttachment();
 
-	unsigned int GetColorTexture();
+	const FGLTexture* GetColorTexture() const;
 
-	FGLShader* GetShader();
+	const FGLShader* GetShader() const;
 
 	void Render(std::function<void()> Closure);
+
+	void Draw();
+
+	static std::array<float, 24> GetVerticesFromRect(const glm::vec2 TopLeft, const glm::vec2 Size);
+
+	static void GLClearColor(const glm::vec4 Color);
+
+	static void ClearBuffer(const unsigned char ClearBufferFlags);
+
+	static void SetViewport(const int X, const int Y, const int Width, const int Height);
+	static void SetViewport(const glm::ivec4& Viewport);
 };

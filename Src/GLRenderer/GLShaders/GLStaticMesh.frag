@@ -13,7 +13,7 @@ uniform DirectionalLight directionalLight;
 uniform PointLight pointLight;
 uniform SpotLight spotLight;
 uniform Material material;
-uniform int spotLightEnable;
+uniform int isUnlit;
 
 void main()
 {
@@ -25,7 +25,6 @@ void main()
 												TexCoord, 
 												OutNormal,
 												viewPos, 
-												FragPos,
-												spotLightEnable);
-	FragColor = textureColor * lightColor;
+												FragPos);
+	FragColor = mix(textureColor * lightColor, textureColor, clamp(isUnlit, 0, 1));
 }

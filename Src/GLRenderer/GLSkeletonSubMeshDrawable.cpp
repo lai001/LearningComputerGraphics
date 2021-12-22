@@ -1,19 +1,15 @@
 #include "GLSkeletonSubMeshDrawable.h"
 
-FGLSkeletonSubMeshDrawable::FGLSkeletonSubMeshDrawable(FSkeletionSubMesh * SubMesh)
+FGLSkeletonSubMeshDrawable::FGLSkeletonSubMeshDrawable(const FSkeletionSubMesh * SubMesh)
 	:SubMesh(SubMesh)
 {
 	Va = new FGLVertexArray();
 	Vb = new FGLVertexBuffer(SubMesh->Vertices.data(), SubMesh->Vertices.size() * sizeof(FVertex));
 	Ib = new FGLIndexBuffer(SubMesh->Indices.data(), SubMesh->Indices.size());
-	Layout = new FGLVertexBufferLayout();
-	Layout->Push<float>(3);
-	Layout->Push<float>(3);
-	Layout->Push<float>(2);
-	Layout->Push<int>(4);
-	Layout->Push<float>(4);
-	Va->AddBuffer(Vb, *Layout);
-
+	FGLVertexBufferLayout Layout;
+	Layout.Float(3).Float(3).Float(2).Int(4).Float(4);
+	Va->AddBuffer(*Vb, Layout);
+	
 	for (int i = 0; i < SubMesh->Textures.size(); i++)
 	{
 		FTextureDescription* TextureDes = SubMesh->Textures[i];

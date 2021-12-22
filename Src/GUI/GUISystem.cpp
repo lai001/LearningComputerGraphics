@@ -18,25 +18,31 @@ const GLFWwindow * FGUISystem::GetWindow()
 
 void FGUISystem::Init()
 {
+	const std::string Version = "#version 330";
+	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& Io = ImGui::GetIO();
-	(void)Io;
-	ImGui_ImplGlfwGL3_Init(this->Window, false);
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(Window, true);
+	assert(ImGui_ImplOpenGL3_Init(Version.c_str()));
 }
 
-void FGUISystem::Tick(GLFWwindow * Window, double RunningTime)
+void FGUISystem::Tick(const GLFWwindow& Window, double RunningTime)
 {
-	ImGui_ImplGlfwGL3_NewFrame();
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
 	if (Interface)
 	{
 		Interface->Render(RunningTime);
 	}
 	ImGui::Render();
-	ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 void FGUISystem::Destroy()
 {
-	ImGui_ImplGlfwGL3_Shutdown();
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 }

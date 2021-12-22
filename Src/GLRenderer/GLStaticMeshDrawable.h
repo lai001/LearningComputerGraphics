@@ -10,6 +10,7 @@ class FGLStaticMeshDrawable
 private:
 	FStaticMesh * Mesh;
 	FGLShader* Shader;
+	FGLShader* UnlitShader;
 
 	std::vector<FGLStaticSubMeshDrawable*> SubMeshDrawables;
 
@@ -18,4 +19,9 @@ public:
 	~FGLStaticMeshDrawable();
 
 	void Draw();
+
+	void DrawWithDepthMapShader(FGLShader& Shader);
+
+	const FStaticMesh* GetMesh() const;
+	const FGLShader* GetShader() const;
 };

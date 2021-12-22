@@ -2,6 +2,7 @@
 #include <functional>
 #include <vector>
 
+#include "ThirdParty/noncopyable.hpp"
 #include "ThirdParty/opengl.h"
 
 #include "GLIndexBuffer.h"
@@ -17,8 +18,11 @@
 #include "GLStaticMeshDrawable.h"
 #include "GLStaticSubMeshDrawable.h"
 #include "GLFrameBuffer.h"
+#include "GLDepthMapFrameBuffer.h"
 #include "GLSkeletonMeshDrawable.h"
 #include "GLSkeletonSubMeshDrawable.h"
+#include "GLVertexObject.h"
+#include "GLDepthMapFrameBufferDebugDrawable.h"
 
 struct GLInfo
 {
@@ -28,7 +32,7 @@ struct GLInfo
 };
 
 
-class FGLRenderer
+class FGLRenderer: public boost::noncopyable
 {
 
 private:

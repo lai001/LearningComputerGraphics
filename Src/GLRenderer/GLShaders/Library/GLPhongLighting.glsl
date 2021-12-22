@@ -10,6 +10,7 @@ struct DirectionalLight {
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
+	int isEnable;
 };
 
 struct PointLight {
@@ -22,6 +23,7 @@ struct PointLight {
 	float constant;
     float linear;
     float quadratic;
+	int isEnable;
 };
 
 struct SpotLight {
@@ -37,6 +39,7 @@ struct SpotLight {
 	float constant;
     float linear;
     float quadratic;
+	int isEnable;
 };
 
 float phongAttenuationRatio(const float constant, const float linear, const float quadratic, float distance)
@@ -70,7 +73,7 @@ vec4 phongPointLight(PointLight iPointLight,
 	vec3 lightSpecularColor = spec * iPointLight.specular * attenuationRatio * vec3(texture(iMaterial.specularTexture, iUV));
 
 	vec4 mixLightingColor = vec4(ambientColor + lightDiffuseColor + lightSpecularColor, 1.0);
-	return mixLightingColor;
+	return mixLightingColor * float(clamp(iPointLight.isEnable, 0, 1));
 }
 
 
@@ -97,7 +100,7 @@ vec4 phongDirectionalLight(DirectionalLight iDirectionalLight,
 	vec3 specularColor = spec * iDirectionalLight.specular * vec3(texture(iMaterial.specularTexture, iUV));
 
 	vec4 mixLightingColor = vec4(ambientColor + diffuseColor + specularColor, 1.0);
-	return mixLightingColor;
+	return mixLightingColor * float(clamp(iDirectionalLight.isEnable, 0, 1));
 }
 
 vec4 phongSpotLight(SpotLight iSpotLight,
@@ -137,7 +140,7 @@ vec4 phongSpotLight(SpotLight iSpotLight,
 	specularColor *= intensity;
 
 	vec4 mixLightingColor = vec4(ambientColor + diffuseColor + specularColor, 1.0);
-	return mixLightingColor;
+	return mixLightingColor * float(clamp(iSpotLight.isEnable, 0, 1));
 }
 
 vec4 phongCompositionLightColor(DirectionalLight iDirectionalLight,
@@ -147,8 +150,7 @@ vec4 phongCompositionLightColor(DirectionalLight iDirectionalLight,
 								vec2 iUV,
 								vec3 iNormal,
 								vec3 iViewPosition,
-								vec3 iFragPos,
-								int iIsSpotLightEnable)
+								vec3 iFragPos)
 {
 	vec4 pointLight = phongPointLight(iPointLight,
 									iMaterial,
@@ -168,5 +170,5 @@ vec4 phongCompositionLightColor(DirectionalLight iDirectionalLight,
 									iNormal,
 									iViewPosition,
 									iFragPos);
-	return (pointLight + directionalLight + spotLight * clamp(iIsSpotLightEnable, 0, 1));
+	return (pointLight + directionalLight + spotLight);
 }

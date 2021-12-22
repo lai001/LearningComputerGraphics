@@ -3,13 +3,12 @@
 #include "GLVertexArray.h"
 #include "GLVertexBuffer.h"
 #include "SkyBox.h"
+#include "GLTexture.h"
 
 class FGLSkyboxDrawable
 {
 
 private:
-	unsigned int RendererID;
-
 	FSkyBox* Skybox;
 
 	FGLVertexArray* Vao;
@@ -17,6 +16,8 @@ private:
 	FGLVertexBuffer* Vbo;
 
 	FGLShader* Shader;
+
+	FGLTexture* CubeMapTexture;
 
 	float SkyboxVertices[108] = {
 	-1.0f,  1.0f, -1.0f,

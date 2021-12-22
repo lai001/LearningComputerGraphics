@@ -1,8 +1,7 @@
 #pragma once
-
-class FGLVertexBuffer
+#include "ThirdParty/noncopyable.hpp"
+class FGLVertexBuffer: public boost::noncopyable
 {
-
 private:
 	unsigned int RendererID;
 public:
@@ -10,6 +9,6 @@ public:
 	~FGLVertexBuffer();
 
 	void Bind() const;
-	void Unbind();
+	void Unbind() const;
 };
 

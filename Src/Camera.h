@@ -36,6 +36,7 @@ private:
 
 public:
 	bool bIsMovable = true;
+	std::string Name;
 
 public:
 	void IncreaseCameraSpeed(float Dx);

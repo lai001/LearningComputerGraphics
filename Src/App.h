@@ -1,6 +1,6 @@
 #pragma once
 #include "GLRenderer/GLRenderer.h"
-#include "GUI/NutGUI.h"
+#include "GUI/MainView.h"
 #include "LightingSystem/LightingSystem.h"
 #include "Camera.h"
 #include "StaticMesh.h"
@@ -8,7 +8,7 @@
 #include "FileManager.h"
 #include "SkeletonMesh.h"
 
-class FApp: public IGLRunLoop, public IGLInput
+class FApp : public IGLRunLoop, public IGLInput
 {
 public:
 	FApp(int arg, char** args);
@@ -25,7 +25,7 @@ private:
 
 	FGUISystem* GUISystem;
 
-	FNutGUI* NutGUI;
+	FMainView* MainView;
 
 	FCamera* Camera;
 
@@ -37,20 +37,32 @@ private:
 
 	FGLSkeletonMeshDrawable* SkeletonMeshDrawable;
 
-	bool bIsSpotLightEnable = true;
-
 	bool bMouseEnable = true;
 
 	FStaticMesh* Mesh;
 
 	FGLStaticMeshDrawable* Drawable;
 
+	FStaticMesh* FloorMesh;
+
+	FGLStaticMeshDrawable* FloorMeshDrawable;
+
 	FGLFrameBuffer* FrameBuffer;
+
+	FGLDepthMapFrameBuffer* DepthMapFrameBuffer;
+	FGLDepthMapFrameBufferDebugDrawable* DepthMapFrameBufferDebugDrawable;
+
+	FStaticMesh* DirectionalLightMesh;
+	FGLStaticMeshDrawable* DirectionalLightMeshDrawable;
 
 	void DrawLevel(double RunningTime);
 
+	void UpdateDepthMap(double RunningTime);
+
+	void UpdateProperty(const FMainView& MainView);
+
 public:
-	virtual void Tick(GLFWwindow * Window, double RunningTime) override;
+	virtual void Tick(const GLFWwindow& Window, double RunningTime) override;
 
 public:
 	virtual void ProcessInput(GLFWwindow * Window, int Key, int Scancode, int Action, int Mods) override;

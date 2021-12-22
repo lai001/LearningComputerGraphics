@@ -17,10 +17,10 @@ int FGLVertexArray::GetRendererID()
 	return RendererID;
 }
 
-void FGLVertexArray::AddBuffer(const FGLVertexBuffer* Vb, const FGLVertexBufferLayout Layout)
+void FGLVertexArray::AddBuffer(const FGLVertexBuffer& Vb, const FGLVertexBufferLayout& Layout)
 {
 	glBindVertexArray(RendererID);
-	Vb->Bind();
+	Vb.Bind();
 	const std::vector<FGLVertexBufferElement> Elements = Layout.GetElements();
 	unsigned int Offset = 0;
 	for (unsigned int i = 0; i < Elements.size(); i++)

@@ -120,7 +120,7 @@ std::vector<FTextureDescription*> FSkeletonMesh::CreateTexture(aiMaterial * Mate
 		aiString TextureFilepath;
 		Material->GetTexture(Type, i, &TextureFilepath);
 		
-		FTextureDescription* Texture = new FTextureDescription(FFileManager::Join({ Directory , TextureFilepath.C_Str() }), Type);
+		FTextureDescription* Texture = FTextureDescription::New(FFileManager::Join({ Directory , TextureFilepath.C_Str() }), Type);
 		Textures.push_back(Texture);
 	}
 	return Textures;
@@ -385,4 +385,25 @@ const std::vector<glm::mat4> FSkeletonMesh::GetTransforms() const
 const glm::mat4 FSkeletonMesh::GetGlobalInverseTransform() const
 {
 	return GlobalInverseTransform;
+}
+
+glm::mat4 FSkeletonMesh::GetModelMatrix() const
+{
+	glm::mat4 ModelMatrix(1.0);
+	ModelMatrix = glm::translate(ModelMatrix, Position);
+	ModelMatrix = glm::scale(ModelMatrix, Scale);
+	ModelMatrix = glm::rotate(ModelMatrix, glm::radians(Rotation.x), glm::vec3(1.0, 0.0f, 0.0f));
+	ModelMatrix = glm::rotate(ModelMatrix, glm::radians(Rotation.y), glm::vec3(0.0, 1.0f, 0.0f));
+	ModelMatrix = glm::rotate(ModelMatrix, glm::radians(Rotation.z), glm::vec3(0.0, 0.0f, 1.0f));
+	return ModelMatrix;
+}
+
+std::vector<const FSkeletionSubMesh*> FSkeletonMesh::GetSubMeshs() const
+{
+	std::vector<const FSkeletionSubMesh*> Meshs;
+	for (FSkeletionSubMesh* Item : SubMeshs)
+	{
+		Meshs.push_back(Item);
+	}
+	return Meshs;
 }

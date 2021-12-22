@@ -18,4 +18,7 @@ public:
 	~FGLSkeletonMeshDrawable();
 
 	void Draw();
+
+	const FSkeletonMesh* GetMesh() const;
+	const FGLShader* GetShader() const;
 };

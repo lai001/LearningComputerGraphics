@@ -5,7 +5,6 @@
 
 class FSkyBox
 {
-
 public:
 	FSkyBox(std::vector<std::string> FilePaths);
 	~FSkyBox();
@@ -15,4 +14,8 @@ public:
 	glm::mat4 Projection;
 
 	std::vector<std::string> FilePaths;
+
+	bool bIsVisible = true;
+
+	std::string Name;
 };

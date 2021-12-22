@@ -9,12 +9,13 @@ public:
 	FLightingSystem();
 	~FLightingSystem();
 
-	FDirLight DirLight;
+	FDirectionalLight DirLight;
 	FPointLight PointLight;
 	FSpotLight SpotLight;
-
-	bool bIsSpotLightEnable;
+	
 	glm::vec3 ViewPosition;
+
+	FShadow Shadow;
 
 private:
 

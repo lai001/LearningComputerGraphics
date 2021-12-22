@@ -9,15 +9,14 @@
 class FGLSkeletonSubMeshDrawable
 {
 private:
-	FSkeletionSubMesh * SubMesh;
+	const FSkeletionSubMesh * SubMesh;
 	FGLVertexArray* Va;
 	FGLVertexBuffer* Vb;
 	FGLIndexBuffer* Ib;
-	FGLVertexBufferLayout* Layout;
 	std::vector<FGLTexture*> Textures;
 
 public:
-	FGLSkeletonSubMeshDrawable(FSkeletionSubMesh* SubMesh);
+	FGLSkeletonSubMeshDrawable(const FSkeletionSubMesh* SubMesh);
 	~FGLSkeletonSubMeshDrawable();
 
 	void Draw(FGLShader* Shader);

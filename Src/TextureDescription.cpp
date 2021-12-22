@@ -3,82 +3,55 @@
 #include "ThirdParty/spdlog.h"
 #include "ThirdParty/stb_image.h"
 
-FTextureDescription::FTextureDescription(const std::string & ImageFilePath, aiTextureType TextureType)
-	:Filepath(ImageFilePath), LocalBuffer(nullptr), Width(0), Height(0), ColorChannels(0), TextureType(TextureType)
+FTextureDescription::FTextureDescription()
 {
-	stbi_set_flip_vertically_on_load(1);
-	LocalBuffer = stbi_load(ImageFilePath.c_str(), &Width, &Height, &ColorChannels, 4);
-
-	if (LocalBuffer)
-	{
-		spdlog::debug("load image successfully, width£º{}, height: {}, {}, textureType: {}", Width, Height, ImageFilePath, TextureType);
-	}
-	else
-	{
-		spdlog::error("load image failed!");
-		__debugbreak();
-	}
-
-	if (LocalBuffer)
-	{
-		if (ColorChannels == 1)
-		{
-			ImageFormatType = EImageFormatType::Gray;
-		}
-		else if (ColorChannels == 3)
-		{
-			ImageFormatType = EImageFormatType::Rgb;
-		}
-		else if (ColorChannels == 4)
-		{
-			ImageFormatType = EImageFormatType::Rgba;
-		}
-		else
-		{
-			__debugbreak();
-		}
-	}
 }
 
 FTextureDescription::~FTextureDescription()
 {
-	if (LocalBuffer)
-	{
-		stbi_image_free(LocalBuffer);
-		LocalBuffer = nullptr;
-	}
+	delete Image;
 }
 
-aiTextureType FTextureDescription::GetTextureType()
+FTextureDescription * FTextureDescription::New(const std::string & ImageFilePath, const aiTextureType TextureType)
+{
+	FImage* Image = FImage::NewImageFromFilepath(ImageFilePath);
+	if (Image == nullptr)
+	{
+		return nullptr;
+	}
+	FTextureDescription* TextureDescription = new FTextureDescription();
+	TextureDescription->Filepath = ImageFilePath;
+	TextureDescription->TextureType = TextureType;
+	TextureDescription->Image = Image;
+	return TextureDescription;
+}
+
+aiTextureType FTextureDescription::GetTextureType() const
 {
 	return TextureType;
 }
 
-const unsigned char * FTextureDescription::GetImageBuffer()
+const unsigned char * FTextureDescription::GetImageBuffer() const
 {
-	if (LocalBuffer)
-	{
-		return LocalBuffer;
-	}
-	return nullptr;
+	return Image->GetData();
 }
 
-EImageFormatType FTextureDescription::GetImageFormatType()
+EImageFormatType FTextureDescription::GetImageFormatType() const
 {
-	return ImageFormatType;
+	return Image->GetImageFormatType();
 }
 
-int FTextureDescription::GetColorChannels()
+int FTextureDescription::GetColorChannels() const
 {
-	return ColorChannels;
+	return Image->GetColorChannels();
 }
 
 int FTextureDescription::GetWidth() const
 {
-	return Width;
+	return Image->GetWidth();
 }
 
 int FTextureDescription::GetHeight() const
 {
-	return Height;
+	return Image->GetHeight();
 }

@@ -4,6 +4,6 @@
 class IGLRunLoop
 {
 public:
-	virtual void Tick(GLFWwindow* Window, double RunningTime) = 0;
+	virtual void Tick(const GLFWwindow& Window, double RunningTime) = 0;
 
 };

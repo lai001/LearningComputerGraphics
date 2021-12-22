@@ -1,17 +1,17 @@
 #include "GLStaticSubMeshDrawable.h"
+#include "ThirdParty/spdlog.h"
+#include "Util.h"
 
-FGLStaticSubMeshDrawable::FGLStaticSubMeshDrawable(FStaticSubMesh* SubMesh)
+FGLStaticSubMeshDrawable::FGLStaticSubMeshDrawable(const FStaticSubMesh* SubMesh)
 	:SubMesh(SubMesh)
 {
-	Va = new FGLVertexArray();
-	Vb = new FGLVertexBuffer(SubMesh->Vertices.data(), SubMesh->Vertices.size() * sizeof(FBaseVertex));
-	Ib = new FGLIndexBuffer(SubMesh->Indices.data(), SubMesh->Indices.size());
-	Layout = new FGLVertexBufferLayout();
-	Layout->Push<float>(3);
-	Layout->Push<float>(3);
-	Layout->Push<float>(2);
-	Va->AddBuffer(Vb, *Layout);
-
+	assert(SubMesh);
+	VertexObject = FGLVertexObject::New(SubMesh->Vertices, SubMesh->Indices, []()
+	{
+		FGLVertexBufferLayout Layout;
+		Layout.Float(3).Float(3).Float(2);
+		return Layout;
+	});
 	for (int i = 0; i < SubMesh->Textures.size(); i++)
 	{
 		FTextureDescription* TextureDes = SubMesh->Textures[i];
@@ -28,7 +28,7 @@ FGLStaticSubMeshDrawable::FGLStaticSubMeshDrawable(FStaticSubMesh* SubMesh)
 			ImageFormat = GL_RGBA;
 			break;
 		case EImageFormatType::Unknow:
-			__debugbreak();
+			assert(false);
 			break;
 		}
 		FGLTexture* Texture = new FGLTexture(ImageFormat,
@@ -43,10 +43,7 @@ FGLStaticSubMeshDrawable::FGLStaticSubMeshDrawable(FStaticSubMesh* SubMesh)
 
 FGLStaticSubMeshDrawable::~FGLStaticSubMeshDrawable()
 {
-	delete Va;
-	delete Vb;
-	delete Layout;
-	delete Ib;
+	delete VertexObject;
 	for (auto item : Textures)
 	{
 		delete item;
@@ -61,7 +58,6 @@ void FGLStaticSubMeshDrawable::Draw(FGLShader* Shader)
 		texture->Bind(i);
 		Shader->SetTexture(texture->GetTextureType(), i);
 	}
-
-	Va->Bind();
+	VertexObject->Bind();
 	glDrawElements(GL_TRIANGLES, SubMesh->Indices.size(), GL_UNSIGNED_INT, 0);
 }

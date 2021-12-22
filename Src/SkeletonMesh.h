@@ -18,12 +18,14 @@ public:
 	const aiAnimation* GetCurrentAnimation();
 
 protected:
+	std::string ModelFilePath;
 	std::string Directory;
 	const aiScene* Scene = nullptr;
 	Assimp::Importer* Importer = nullptr;
 	glm::mat4 GlobalInverseTransform;
 	std::vector<const aiAnimation*> Animations;
 	int SelectedAniamtionIndex = -1;
+	std::vector<FSkeletionSubMesh*> SubMeshs;
 
 	void LoadModel();
 	FVertex CreateVertex(aiMesh * Mesh, int Index);
@@ -44,21 +46,26 @@ private:
 	int FindScaling(float AnimationTime, const aiNodeAnim * NodeAnim);
 
 public:
-	std::vector<FSkeletionSubMesh*> SubMeshs;
+	std::string Name = "";
 
-	std::string ModelFilePath;
+	glm::vec3 Position = glm::vec3(0.0);
+	glm::vec3 Rotation = glm::vec3(0.0);
+	glm::vec3 Scale = glm::vec3(1.0);
 
-	glm::mat4 Model;
 	glm::mat4 View;
 	glm::mat4 Projection;
 
 	float RunningTime;
-	bool bIsEnableBindingPost;
+	bool bIsEnableBindingPost = false;
 	float Speed;
 
 	FLightingSystem* LightingSystem;
+	bool bIsUnlit = false;
+	bool bIsVisible = true;
 
 	void UpdateBoneTransform();
 	const std::vector<glm::mat4> GetTransforms() const;
 	const glm::mat4 GetGlobalInverseTransform() const;
+	glm::mat4 GetModelMatrix() const;
+	std::vector<const FSkeletionSubMesh*> GetSubMeshs() const;
 };

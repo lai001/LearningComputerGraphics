@@ -15,14 +15,17 @@ FApp::FApp(int arg, char** args)
 	spdlog::set_level(spdlog::level::trace);
 	spdlog::debug(FileManager->GetResouceDir());
 	FGLShader::SetShadersFolder(FileManager->GetResourcePath("GLShaders"));
-	GLRenderer = new FGLRenderer(1280, 720, "Nut");
+	GLRenderer = new FGLRenderer(1440, 900, "LearningComputerGraphics");
+	GLRenderer->MakeContextCurrent();
+
 	InputCenter = GLRenderer->GetInputCenter();
 	LightingSystem = new FLightingSystem();
 	GUISystem = new FGUISystem(GLRenderer->GetWindow());
-	NutGUI = new FNutGUI();
-	GUISystem->Interface = NutGUI;
+	MainView = new FMainView();
+	GUISystem->Interface = MainView;
 
 	Camera = new FCamera(GLRenderer->GetScreenWidth(), GLRenderer->GetScreenHeight());
+	Camera->Name = "Camera";
 
 	InputCenter->AddInput(this);
 	InputCenter->AddInput(Camera);
@@ -30,23 +33,52 @@ FApp::FApp(int arg, char** args)
 	GLRenderer->AddRunLoop(this);
 	GLRenderer->AddRunLoop(GUISystem);
 
-	GLRenderer->MakeContextCurrent();
-
 	GLInfo Info = GLRenderer->GetGLInfo();
 	spdlog::debug("{}, {}, {}", Info.Version, Info.Vendor, Info.Renderer);
 
 	{
-		Mesh = new FStaticMesh(FileManager->GetResourcePath("Character.dae"));
+		LightingSystem->Shadow.LightProjectionView = glm::vec4(-10.0f, 10.0f, -10.0f, 10.0f);
+		LightingSystem->Shadow.ProjectionFar = 7.5;
+		LightingSystem->Shadow.ProjectionNear = 1.0;
 
-		glm::mat4 Model(1.0);
-		Model = glm::translate(Model, glm::vec3(0, 1.0, 0));
-		Model = glm::scale(Model, glm::vec3(0.2f));
+		LightingSystem->Shadow.LightViewEye = glm::vec3(-2.0f, 4.0f, -1.0f);
+		LightingSystem->Shadow.LightViewCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+		LightingSystem->Shadow.LightViewUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	}
 
-		Mesh->Model = Model;
+	{
+		DepthMapFrameBuffer = new FGLDepthMapFrameBuffer(GLRenderer->GetScreenWidth(),
+			GLRenderer->GetScreenHeight());
+
+		DepthMapFrameBufferDebugDrawable = new FGLDepthMapFrameBufferDebugDrawable(*DepthMapFrameBuffer,
+			glm::vec2(-1.0 + 2.0 / 3.0, 1.0),
+			glm::vec2(2.0 / 3.0, 2.0 / 3.0));
+	}
+
+	{
+		Mesh = FStaticMesh::New(FileManager->GetResourcePath("Character.dae"));
+		Mesh->Name = "Character";
+		Mesh->Position = glm::vec3(0.0, 1.0, 0.0);
+		Mesh->Rotation = glm::vec3(0.0);
+		Mesh->Scale = glm::vec3(0.2);
 		Mesh->View = Camera->GetViewMat();
 		Mesh->Projection = Camera->GetprojectionMat();
 		Mesh->LightingSystem = LightingSystem;
 		Drawable = new FGLStaticMeshDrawable(Mesh);
+	}
+
+	{
+		FloorMesh = FStaticMesh::New(FileManager->GetResourcePath("Floor.dae"));
+		FloorMesh->Name = "Floor";
+
+		FloorMesh->Position = glm::vec3(0.0, -2.0, 0.0);
+		FloorMesh->Rotation = glm::vec3(-90.0, 0.0, 0.0);
+		FloorMesh->Scale = glm::vec3(1.0);
+
+		FloorMesh->View = Camera->GetViewMat();
+		FloorMesh->Projection = Camera->GetprojectionMat();
+		FloorMesh->LightingSystem = LightingSystem;
+		FloorMeshDrawable = new FGLStaticMeshDrawable(FloorMesh);
 	}
 
 	{
@@ -60,24 +92,26 @@ FApp::FApp(int arg, char** args)
 		};
 
 		Skybox = new FSkyBox(SkyBoxFilePaths);
+		Skybox->Name = "Skybox";
 		SkyboxDrawable = new FGLSkyboxDrawable(Skybox);
 	}
 
 	{
-		FrameBuffer = new FGLFrameBuffer(1280, 720);
+		FrameBuffer = new FGLFrameBuffer(GLRenderer->GetScreenWidth(),
+			GLRenderer->GetScreenHeight(),
+			glm::vec2(-1.0, 1.0),
+			glm::vec2(2.0 / 3.0, 2.0 / 3.0));
 		FrameBuffer->ClearColor = glm::vec4(0.3f, 0.4f, 0.5f, 1.0f);
 		FrameBuffer->ClearBufferFlags = EClearBufferFlags::Color | EClearBufferFlags::Depth;
 	}
 
 	{
 		SkeletonMesh = new FSkeletonMesh(FileManager->GetResourcePath("skeletal_animation/model.dae"));
+		SkeletonMesh->Name = "skeletal_animation";
+		SkeletonMesh->Position = glm::vec3(0.0f, -0.9f, 0.0f);
+		SkeletonMesh->Rotation = glm::vec3(-90.0, 0.0, 0.0);
+		SkeletonMesh->Scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
-		glm::mat4 Model = glm::mat4(1.0f);
-		Model = glm::translate(Model, glm::vec3(0.0f, -0.9f, 0.0f));
-		Model = glm::scale(Model, glm::vec3(0.2f, 0.2f, 0.2f));
-		Model = glm::rotate(Model, glm::radians(90.0f), glm::vec3(-1.0, 0.0, 0.0));
-
-		SkeletonMesh->Model = Model;
 		SkeletonMesh->View = Camera->GetViewMat();
 		SkeletonMesh->Projection = Camera->GetprojectionMat();
 		SkeletonMesh->Speed = 1.0;
@@ -85,6 +119,34 @@ FApp::FApp(int arg, char** args)
 
 		SkeletonMeshDrawable = new FGLSkeletonMeshDrawable(SkeletonMesh);
 	}
+
+	{
+		DirectionalLightMesh = FStaticMesh::New(FileManager->GetResourcePath("light/cube.dae"));
+		DirectionalLightMesh->Name = "DirectionalLight";
+		DirectionalLightMesh->bIsUnlit = true;
+
+		DirectionalLightMesh->Position = glm::vec3(0.0);
+		DirectionalLightMesh->Rotation = glm::vec3(0.0);
+		DirectionalLightMesh->Scale = glm::vec3(0.1);
+
+		DirectionalLightMesh->View = Camera->GetViewMat();
+		DirectionalLightMesh->Projection = Camera->GetprojectionMat();
+		DirectionalLightMesh->LightingSystem = LightingSystem;
+		DirectionalLightMeshDrawable = new FGLStaticMeshDrawable(DirectionalLightMesh);
+	}
+
+	std::vector<FStaticMesh*> StaticMeshs = { Mesh, FloorMesh };
+	for (auto Mesh : StaticMeshs)
+	{
+		MainView->PushComponent(Mesh);
+	}
+	MainView->PushComponent(SkeletonMesh);
+	MainView->PushComponent(Camera);
+	MainView->PushComponent(Skybox);
+	MainView->PushComponent(&LightingSystem->DirLight, DirectionalLightMesh);
+	MainView->PushComponent(&LightingSystem->Shadow);
+	MainView->PushComponent(&LightingSystem->SpotLight);
+	MainView->PushComponent(&LightingSystem->PointLight);
 
 	GLRenderer->StartMainLoop();
 }
@@ -94,58 +156,90 @@ FApp::~FApp()
 	delete GLRenderer;
 	delete LightingSystem;
 	delete GUISystem;
-	delete NutGUI;
+	delete MainView;
 	delete Camera;
 	delete Mesh;
 	delete Drawable;
 	delete FrameBuffer;
+	delete DepthMapFrameBuffer;
+	delete DepthMapFrameBufferDebugDrawable;
 	delete FileManager;
 }
 
-void FApp::Tick(GLFWwindow * Window, double RunningTime)
+void FApp::UpdateProperty(const FMainView & MainView)
 {
-	LightingSystem->PointLight.Position = NutGUI->PointLightPosition;
+
+}
+
+void FApp::Tick(const GLFWwindow& Window, double RunningTime)
+{
 	LightingSystem->SpotLight.Position = Camera->GetPosition();
 	LightingSystem->SpotLight.Direction = Camera->GetCameraFront();
-	LightingSystem->bIsSpotLightEnable = bIsSpotLightEnable;
 	LightingSystem->ViewPosition = Camera->GetPosition();
 
-	NutGUI->CurrentFOV = Camera->GetFov();
-	NutGUI->CurrentCameraSpeed = Camera->GetCameraSpeed();
+	DirectionalLightMesh->Rotation = LightingSystem->DirLight.Direction;
+
+	if (LightingSystem->Shadow.bIsShadowEnable)
+	{
+		UpdateDepthMap(RunningTime);
+	}
 
 	DrawLevel(RunningTime);
 
-	if (NutGUI->bIsFrameBufferEnable)
+	if (MainView->bIsShowDepthMap)
 	{
-		FrameBuffer->PostProcessing = NutGUI->PostProcessing;
-		FrameBuffer->Render([&]() {
+		DepthMapFrameBufferDebugDrawable->Draw(LightingSystem->Shadow.ProjectionNear,
+			LightingSystem->Shadow.ProjectionFar);
+	}
+
+	if (MainView->bIsFrameBufferEnable)
+	{
+		FrameBuffer->PostProcessing = MainView->PostProcessing;
+		FrameBuffer->Render([&]()
+		{
 			DrawLevel(RunningTime);
 		});
 	}
 }
 
-void FApp::DrawLevel(double RunningTime) {
-	Mesh->View = Camera->GetViewMat();
-	Mesh->Projection = Camera->GetprojectionMat();
-	Drawable->Draw();
+void FApp::DrawLevel(double RunningTime)
+{
+	std::vector<FStaticMesh*> StaticMeshs = { Mesh, FloorMesh, DirectionalLightMesh };
+	std::vector<FGLStaticMeshDrawable*> StaticMeshDrawables = { Drawable, FloorMeshDrawable, DirectionalLightMeshDrawable };
 
-	if (NutGUI->bIsShowSkybox)
+	for (auto StaticMesh : StaticMeshs)
 	{
-		Skybox->View = glm::mat4(glm::mat3(Camera->GetViewMat()));
-		Skybox->Projection = Camera->GetprojectionMat();
-		SkyboxDrawable->Draw();
+		StaticMesh->View = Camera->GetViewMat();
+		StaticMesh->Projection = Camera->GetprojectionMat();
 	}
 
-	if (SkeletonMesh)
+	for (auto StaticMeshDrawable : StaticMeshDrawables)
 	{
-		SkeletonMesh->bIsEnableBindingPost = NutGUI->BindingPostEnable;
-		SkeletonMesh->RunningTime = RunningTime;
-		SkeletonMesh->Speed = NutGUI->ModelAnimationSpeed;
-		SkeletonMesh->View = Camera->GetViewMat();
-		SkeletonMesh->Projection = Camera->GetprojectionMat();
-		SkeletonMesh->UpdateBoneTransform();
-		SkeletonMeshDrawable->Draw();
+		StaticMeshDrawable->Draw();
 	}
+
+	Skybox->View = glm::mat4(glm::mat3(Camera->GetViewMat()));
+	Skybox->Projection = Camera->GetprojectionMat();
+	SkyboxDrawable->Draw();
+
+	SkeletonMesh->RunningTime = RunningTime;
+	SkeletonMesh->View = Camera->GetViewMat();
+	SkeletonMesh->Projection = Camera->GetprojectionMat();
+	SkeletonMesh->UpdateBoneTransform();
+	SkeletonMeshDrawable->Draw();
+}
+
+void FApp::UpdateDepthMap(double RunningTime)
+{
+	DepthMapFrameBuffer->Render([&]()
+	{
+		std::vector<FGLStaticMeshDrawable*> StaticMeshDrawables = { Drawable, FloorMeshDrawable };
+		for (auto StaticMeshDrawable : StaticMeshDrawables)
+		{
+			FGLShader* Shader = DepthMapFrameBuffer->GetShareShader();
+			StaticMeshDrawable->DrawWithDepthMapShader(*Shader);
+		}
+	});
 }
 
 void FApp::ProcessInput(GLFWwindow * Window, int Key, int Scancode, int Action, int Mods)
@@ -172,8 +266,12 @@ void FApp::ProcessInput(GLFWwindow * Window, int Key, int Scancode, int Action, 
 			}
 			break;
 
+		case GLFW_KEY_F2:
+			MainView->bIsHidden = !MainView->bIsHidden;
+			break;
+
 		case GLFW_KEY_F:
-			bIsSpotLightEnable = !bIsSpotLightEnable;
+			LightingSystem->SpotLight.bIsSpotLightEnable = !LightingSystem->SpotLight.bIsSpotLightEnable;
 			break;
 
 		case GLFW_KEY_M:

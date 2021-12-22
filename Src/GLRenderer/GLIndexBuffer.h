@@ -1,5 +1,7 @@
 #pragma once
-class FGLIndexBuffer
+#include "ThirdParty/noncopyable.hpp"
+
+class FGLIndexBuffer: public boost::noncopyable
 {
 private:
 	unsigned int RendererID;

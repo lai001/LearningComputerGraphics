@@ -7,21 +7,22 @@
 #include "glad/glad.h"
 
 #include "GLPreProcessor.h"
+#include "FileManager/FileManager.h"
 
 std::string FGLShader::ShadersFolder = "";
+std::unordered_map<std::string, FGLShader*> FGLShader::Shaders;
+unsigned int FGLShader::InvalidID = -1;
 
-FGLShader::FGLShader(const std::string & VertexFilepath, const std::string & FragmentFilepath)
-	: VertexFilepath(VertexFilepath), FragmentFilepath(FragmentFilepath), RendererID(0)
+FGLShader::FGLShader()
 {
-	std::string VertexShader = ParseShader(VertexFilepath);
-	std::string FragmentShader = ParseShader(FragmentFilepath);
-
-	RendererID = CreateShader(VertexShader, FragmentShader);
 }
 
 FGLShader::~FGLShader()
 {
-	glDeleteProgram(RendererID);
+	if (RendererID != FGLShader::InvalidID)
+	{
+		glDeleteProgram(RendererID);
+	}
 }
 
 std::string FGLShader::GetShadersFolder()
@@ -36,6 +37,7 @@ void FGLShader::SetShadersFolder(const std::string & Filepath)
 
 void FGLShader::Bind() const
 {
+	assert(RendererID != FGLShader::InvalidID);
 	glUseProgram(RendererID);
 }
 
@@ -46,26 +48,30 @@ void FGLShader::Unbind()
 
 int FGLShader::CreateShader(const std::string& VertexShader, const std::string& FragmentShader)
 {
-	unsigned int Program = glCreateProgram();
-
-	unsigned int Vs = CompileShader(GL_VERTEX_SHADER, VertexShader, VertexFilepath);
-	unsigned int Fs = CompileShader(GL_FRAGMENT_SHADER, FragmentShader, FragmentFilepath);
-
-	glAttachShader(Program, Vs);
-	glAttachShader(Program, Fs);
-	glLinkProgram(Program);
-	glValidateProgram(Program);
-
-	glDeleteShader(Vs);
-	glDeleteShader(Fs);
-
-	return Program;
+	unsigned int ProgramID = glCreateProgram();
+	try
+	{
+		unsigned int Vs = CompileShader(GL_VERTEX_SHADER, VertexShader);
+		unsigned int Fs = CompileShader(GL_FRAGMENT_SHADER, FragmentShader);
+		glAttachShader(ProgramID, Vs);
+		glAttachShader(ProgramID, Fs);
+		glLinkProgram(ProgramID);
+		glValidateProgram(ProgramID);
+		glDeleteShader(Vs);
+		glDeleteShader(Fs);
+		return ProgramID;
+	}
+	catch (const std::exception E)
+	{
+		glDeleteProgram(ProgramID);
+		throw E;
+	}
 }
 
-unsigned int FGLShader::CompileShader(unsigned int Type, const std::string & Source, const std::string DebugFilepath)
+unsigned int FGLShader::CompileShader(const unsigned int ShaderType, const std::string & ShaderSource)
 {
-	unsigned int Shader = glCreateShader(Type);
-	const char* Src = Source.c_str();
+	unsigned int Shader = glCreateShader(ShaderType);
+	const char* Src = ShaderSource.c_str();
 	glShaderSource(Shader, 1, &Src, nullptr);
 	glCompileShader(Shader);
 
@@ -77,14 +83,12 @@ unsigned int FGLShader::CompileShader(unsigned int Type, const std::string & Sou
 		int Length;
 		glGetShaderiv(Shader, GL_INFO_LOG_LENGTH, &Length);
 		char* Message = (char*)alloca(Length * sizeof(char));
-
 		glGetShaderInfoLog(Shader, Length, &Length, Message);
-		spdlog::error("Failed to compile{0} shader!", (Type == GL_VERTEX_SHADER ? " vertex" : " fragment"));
-		spdlog::error(DebugFilepath);
-		spdlog::error(Message);
+		//spdlog::error("Failed to compile{0} shader!", (ShaderType == GL_VERTEX_SHADER ? " vertex" : " fragment"));
+		//spdlog::error(DebugFilepath);
+		//spdlog::error(Message);
 		glDeleteShader(Shader);
-
-		return 0;
+		throw std::runtime_error(std::string(ShaderType == GL_VERTEX_SHADER ? " vertex" : " fragment") + std::string(" shader compile fail.") + std::string(Message));
 	}
 
 	return Shader;
@@ -107,7 +111,8 @@ std::string FGLShader::ParseShader(const std::string & Filepath)
 	}
 	catch (std::ifstream::failure E)
 	{
-		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ IN FILE: " << Filepath << std::endl;
+		spdlog::error("ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ IN FILE: {}", Filepath);
+		throw E;
 	}
 
 	return GLPreProcessor::Process(SourceShader);
@@ -120,6 +125,15 @@ void FGLShader::SetUniform4f(const std::string& Name, float V0, float V1, float 
 		UniformLocationCache[Name] = glGetUniformLocation(RendererID, Name.c_str());
 	}
 	glUniform4f(UniformLocationCache[Name], V0, V1, V2, V3);
+}
+
+void FGLShader::SetUniform4fv(const std::string & Name, const glm::vec4 & Value)
+{
+	if (UniformLocationCache.find(Name) == UniformLocationCache.end())
+	{
+		UniformLocationCache[Name] = glGetUniformLocation(RendererID, Name.c_str());
+	}
+	glUniform4fv(UniformLocationCache[Name], 1, &Value[0]);
 }
 
 void FGLShader::SetUniform3f(const std::string & Name, float V0, float V1, float V2)
@@ -167,12 +181,13 @@ void FGLShader::SetUniformMat4(const std::string & Name, const glm::mat4& Matrix
 	glUniformMatrix4fv(UniformLocationCache[Name], 1, GL_FALSE, &Matrix[0][0]);
 }
 
-void FGLShader::SetLight(FDirLight DirLight, FPointLight PointLight, FSpotLight SpotLight)
+void FGLShader::SetLight(FDirectionalLight DirLight, FPointLight PointLight, FSpotLight SpotLight)
 {
 	SetUniform3fv("directionalLight.direction", DirLight.Direction);
 	SetUniform3fv("directionalLight.ambient", DirLight.Ambient);
 	SetUniform3fv("directionalLight.diffuse", DirLight.Diffuse);
 	SetUniform3fv("directionalLight.specular", DirLight.Specular);
+	SetUniform1i("directionalLight.isEnable", int(DirLight.bIsDirectionalLightEnable));
 
 	SetUniform3fv("pointLight.position", PointLight.Position);
 	SetUniform3fv("pointLight.ambient", PointLight.Ambient);
@@ -181,6 +196,7 @@ void FGLShader::SetLight(FDirLight DirLight, FPointLight PointLight, FSpotLight 
 	SetUniform1f("pointLight.constant", PointLight.Constant);
 	SetUniform1f("pointLight.linear", PointLight.Linear);
 	SetUniform1f("pointLight.quadratic", PointLight.Quadratic);
+	SetUniform1i("pointLight.isEnable", int(PointLight.bIsPointLightEnable));
 
 	SetUniform3fv("spotLight.position", SpotLight.Position);
 	SetUniform3fv("spotLight.direction", SpotLight.Direction);
@@ -192,6 +208,7 @@ void FGLShader::SetLight(FDirLight DirLight, FPointLight PointLight, FSpotLight 
 	SetUniform1f("spotLight.quadratic", SpotLight.Quadratic);
 	SetUniform1f("spotLight.cutOff", SpotLight.CutOff);
 	SetUniform1f("spotLight.outerCutOff", SpotLight.OuterCutOff);
+	SetUniform1i("spotLight.isEnable", int(SpotLight.bIsSpotLightEnable));
 }
 
 void FGLShader::SetMatrix(glm::mat4 Model, glm::mat4 View, glm::mat4 Projection)
@@ -201,10 +218,15 @@ void FGLShader::SetMatrix(glm::mat4 Model, glm::mat4 View, glm::mat4 Projection)
 	SetUniformMat4("projection", Projection);
 }
 
-void FGLShader::SetSpotLightEnable(bool bEnable)
+void FGLShader::SetIsUnlit(bool bIsUnlit)
 {
-	SetUniform1i("spotLightEnable", int(bEnable));
+	SetUniform1i("isUnlit", int(bIsUnlit));
 }
+
+//void FGLShader::SetSpotLightEnable(bool bEnable)
+//{
+//	SetUniform1i("spotLightEnable", int(bEnable));
+//}
 
 void FGLShader::SetMaterial(int DiffuseTextureBindSlot, int SpecularTextureBindSlot, float Shininess)
 {
@@ -222,9 +244,10 @@ void FGLShader::SetBoneTransform(std::vector<glm::mat4> Transforms)
 {
 	for (int i = 0; i < Transforms.size(); i++)
 	{
-		char Name[128];
-		memset(Name, 0, sizeof(Name));
-		_snprintf_s(Name, sizeof(Name), "bones[%d]", i);
+		//char Name[128];
+		//memset(Name, 0, sizeof(Name));
+		//_snprintf_s(Name, sizeof(Name), "bones[%d]", i);
+		std::string Name = fmt::format("bones[{}]", i);
 		SetUniformMat4(Name, Transforms[i]);
 	}
 }
@@ -276,6 +299,7 @@ void FGLShader::SetTexture(aiTextureType Type, int Slot)
 		//case _aiTextureType_Force32Bit:
 		//	break;
 	default:
+		assert(false);
 		break;
 	}
 }
@@ -283,4 +307,107 @@ void FGLShader::SetTexture(aiTextureType Type, int Slot)
 void FGLShader::SetViewPosition(const glm::vec3 & ViewPosition)
 {
 	SetUniform3fv("viewPos", ViewPosition);
+}
+
+void FGLShader::SetModelMatrix(const glm::mat4& Model)
+{
+	SetUniformMat4("model", Model);
+}
+
+void FGLShader::SetLightSpaceMatrix(const glm::mat4 & Matrix)
+{
+	SetUniformMat4("lightSpaceMat", Matrix);
+}
+
+FGLShader * FGLShader::New(const std::string & VertexFilepath, const std::string & FragFilepath)
+{
+	FGLShader * Shader = nullptr;
+	try
+	{
+		std::string VertexShaderSource = FGLShader::ParseShader(VertexFilepath);
+		std::string FragmentShaderSource = FGLShader::ParseShader(FragFilepath);
+		Shader = new FGLShader();
+		Shader->VertexFilepath = VertexFilepath;
+		Shader->FragmentFilepath = FragFilepath;
+		Shader->RendererID = FGLShader::CreateShader(VertexShaderSource, FragmentShaderSource);
+		return Shader;
+	}
+	catch (const std::exception E)
+	{
+		spdlog::error("{}, {}, {}", VertexFilepath, FragFilepath, E.what());
+		if (Shader)
+		{
+			delete Shader;
+		}
+		return nullptr;
+	}
+}
+
+FGLShader * FGLShader::Cache(const std::string & Name)
+{
+	FGLShader* Shader = FGLShader::Shaders[Name];
+	return Shader;
+}
+
+FGLShader * FGLShader::NewOrCache(const std::string & VertexFilepath, const std::string & FragFilepath, const std::string & Name)
+{
+	FGLShader* Shader = Cache(Name);
+	if (Shader == nullptr)
+	{
+		bool Result = LoadShader(VertexFilepath, FragFilepath, Name);
+		if (Result)
+		{
+			Shader = Cache(Name);
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+	return Shader;
+}
+
+bool FGLShader::LoadShader(const std::string & VertexFilepath, const std::string & FragFilepath, const std::string& Name)
+{
+	FGLShader* Shader = FGLShader::Shaders[Name];
+	if (Shader == nullptr)
+	{
+		Shader = FGLShader::New(VertexFilepath, FragFilepath);
+		if (Shader)
+		{
+			FGLShader::Shaders[Name] = Shader;
+		}
+	}
+
+	if (Shader)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void FGLShader::LoadShaderSync()
+{
+	std::function<void(std::string)> Load = [](const std::string& Name)
+	{
+		LoadShader(FFileManager::Join({ ShadersFolder , Name + ".vert" }),
+			FFileManager::Join({ ShadersFolder , Name + ".frag" }),
+			Name);
+	};
+	std::vector<std::string> Filenames;
+	Filenames.push_back("GLDepthMap");
+	Filenames.push_back("GLDepthMapDebug");
+	Filenames.push_back("GLFramebuffers");
+	Filenames.push_back("GLSkeletonMesh");
+	Filenames.push_back("GLSkybox");
+	Filenames.push_back("GLStaticMesh");
+	Filenames.push_back("GLSwirlFragmentShader");
+	Filenames.push_back("GLUnlitStaticMesh");
+	for (const std::string& Filename : Filenames)
+	{
+		Load(Filename);
+	}
 }

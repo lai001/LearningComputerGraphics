@@ -3,19 +3,23 @@
 #include <string>
 #include "ThirdParty/assimp.h"
 #include "ThirdParty/glm.h"
+#include "ThirdParty/noncopyable.hpp"
 #include "StaticSubMesh.h"
 #include "LightingSystem/LightingSystem.h"
 
-class FStaticMesh
+class FStaticMesh: public boost::noncopyable
 {
 public:
-	FStaticMesh();
-	FStaticMesh(std::string ModelFilePath);
 	~FStaticMesh();
 
+	static FStaticMesh* New(std::string ModelFilePath);
+
 protected:
+	FStaticMesh();
 	std::string Directory;
-	const aiScene* Scene;
+	std::string ModelFilePath;
+	std::vector<FStaticSubMesh*> SubMeshs;
+	const aiScene* Scene = nullptr;
 	Assimp::Importer* Importer = nullptr;
 	glm::mat4 GlobalInverseTransform;
 
@@ -26,16 +30,20 @@ protected:
 	std::vector<FTextureDescription*> CreateTexture(aiMaterial * Material, aiTextureType Type);
 
 public:
-	std::vector<FStaticSubMesh*> SubMeshs;
+	std::string Name = "";
+	glm::vec3 Position = glm::vec3(0.0);
+	glm::vec3 Rotation = glm::vec3(0.0);
+	glm::vec3 Scale = glm::vec3(1.0);
 
-	std::string ModelFilePath;
-
-	glm::mat4 Model;
 	glm::mat4 View;
 	glm::mat4 Projection;
 
 	FLightingSystem* LightingSystem;
 
-	glm::mat4 GetGlobalInverseTransform();
-};
+	bool bIsUnlit = false;
+	bool bIsVisible = true;
 
+	glm::mat4 GetGlobalInverseTransform();
+	glm::mat4 GetModelMatrix() const;
+	std::vector<const FStaticSubMesh*> GetSubMeshs() const;
+};

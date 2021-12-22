@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <assert.h>
 #include "ThirdParty/opengl.h"
 
 struct FGLVertexBufferElement
@@ -18,8 +19,7 @@ struct FGLVertexBufferElement
 		case GL_UNSIGNED_BYTE:		return 1;
 		case GL_INT:				return 4;
 		default:
-			__debugbreak();
-			return 0;
+			assert(false);
 		}
 	}
 };
@@ -66,6 +66,34 @@ public:
 	{
 		Elements.push_back({ GL_UNSIGNED_BYTE, Count, false });
 		Stride += Count * sizeof(unsigned char);
+	}
+
+	FGLVertexBufferLayout& Int(unsigned int Count)
+	{
+		Elements.push_back({ GL_INT, Count, false });
+		Stride += Count * sizeof(int);
+		return *this;
+	}
+
+	FGLVertexBufferLayout& Float(unsigned int Count)
+	{
+		Elements.push_back({ GL_FLOAT, Count, false });
+		Stride += Count * sizeof(float);
+		return *this;
+	}
+
+	FGLVertexBufferLayout& UnsignedInt(unsigned int Count)
+	{
+		Elements.push_back({ GL_UNSIGNED_INT, Count, false });
+		Stride += Count * sizeof(unsigned int);
+		return *this;
+	}
+
+	FGLVertexBufferLayout& UnsignedByte(unsigned int Count)
+	{
+		Elements.push_back({ GL_UNSIGNED_BYTE, Count, false });
+		Stride += Count * sizeof(unsigned char);
+		return *this;
 	}
 
 	inline std::vector<FGLVertexBufferElement> GetElements() const

@@ -24,7 +24,8 @@ aux_source_directory("Src/FileManager" SRC_FileManager)
 aux_source_directory("Src/BridgingModels" SRC_BridgingModels)
 
 file(GLOB HEADERS Src/*.h)
-file(GLOB ThirdParty_HEADERS Src/ThirdParty/*.h)
+file(GLOB ThirdParty_HEADERS Src/ThirdParty/*.h Src/ThirdParty/noncopyable.hpp)
+file(GLOB stb_image_Src Src/ThirdParty/*.cpp )
 file(GLOB GLRenderer_HEADERS Src/GLRenderer/*.h)
 file(GLOB GUI_HEADERS Src/GUI/*.h)
 file(GLOB LightingSystem_HEADERS Src/LightingSystem/*.h)
@@ -39,7 +40,7 @@ ${SRC_GUI} ${SRC_LightingSystem}
 ${HEADERS} ${GLRenderer_HEADERS}
 ${GUI_HEADERS} ${LightingSystem_HEADERS}
 ${SRC_BridgingModels} ${BridgingModels_HEADERS}
-${GLShader}
+${GLShader} ${stb_image_Src}
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES 
@@ -48,12 +49,12 @@ ${SRC_GUI} ${SRC_LightingSystem} ${HEADERS}
 ${GLRenderer_HEADERS} ${GUI_HEADERS} ${LightingSystem_HEADERS}
 ${ThirdParty_HEADERS} ${FileManager_HEADERS} ${SRC_FileManager}
 ${SRC_BridgingModels} ${BridgingModels_HEADERS}
-${GLShader}
+${GLShader} ${stb_image_Src}
 )
 
-file(GLOB stb_image_Src Vendor/stb_image/*.cpp )
 file(GLOB stb_image_Header Vendor/stb_image/*.h)
 add_library(stb_image STATIC ${stb_image_Src} ${stb_image_Header})
+set_target_properties(stb_image PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(${PROJECT_NAME} PRIVATE stb_image)
 
 file(GLOB_RECURSE  glad_Src Vendor/glad/**.c)
@@ -73,9 +74,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 
 file(GLOB imgui_Src Vendor/imgui/*.cpp)
 file(GLOB imgui_Header Vendor/imgui/*.h)
-file(GLOB imgui_Src2 Vendor/imgui/examples/opengl3_example/imgui_impl_glfw_gl3.cpp)
-file(GLOB imgui_Header2 Vendor/imgui/examples/opengl3_example/imgui_impl_glfw_gl3.h)
-add_library(imgui STATIC ${imgui_Src} ${imgui_Src2} ${imgui_Header} ${imgui_Header2})
+add_library(imgui STATIC 
+${imgui_Src} 
+${imgui_Header}
+Vendor/imgui/backends/imgui_impl_glfw.cpp
+Vendor/imgui/backends/imgui_impl_glfw.h
+Vendor/imgui/backends/imgui_impl_opengl3.cpp
+Vendor/imgui/backends/imgui_impl_opengl3.h
+Vendor/imgui/backends/imgui_impl_opengl3_loader.h
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui)
 
 add_subdirectory(Vendor/glm)
