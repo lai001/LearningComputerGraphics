@@ -1,5 +1,7 @@
 #include "DiligentRenderer.hpp"
 #include <assert.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include <Foundation/Foundation.hpp>
 
 FDiligentRenderer::FDiligentRenderer(HWND hWnd)
@@ -10,8 +12,22 @@ FDiligentRenderer::FDiligentRenderer(HWND hWnd)
 	assert(Device);
 	assert(ImmediateContext);
 	assert(SwapChain);
-	const ks::PixelBuffer PixelBuffer = ks::PixelBuffer(512, 512, ks::PixelBuffer::FormatType::rgba8);
+	ks::PixelBuffer PixelBuffer = ks::PixelBuffer(512, 512, ks::PixelBuffer::FormatType::rgba8);
 	DefaultTexture2D = ToTexture2D("DefaultTexture2D", &PixelBuffer);
+
+	for (size_t heightIndex = 0; heightIndex < PixelBuffer.getHeight(); heightIndex++)
+	{
+		for (size_t widthIndex = 0; widthIndex < PixelBuffer.getWidth(); widthIndex++)
+		{
+			unsigned char * MutableData = PixelBuffer.getMutableData()[0];
+			const unsigned int PixelIndex = heightIndex * PixelBuffer.getWidth() + widthIndex;
+			MutableData[PixelIndex * 4 + 0] = 128;
+			MutableData[PixelIndex * 4 + 1] = 128;
+			MutableData[PixelIndex * 4 + 2] = 255;
+		}
+	}
+
+	DefaultNormalTexture2D = ToTexture2D("DefaultNormalTexture2D", &PixelBuffer);
 }
 
 FDiligentRenderer::~FDiligentRenderer()
@@ -157,7 +173,7 @@ void FDiligentRenderer::ClearStencil()
 Diligent::RefCntAutoPtr<Diligent::IBuffer> FDiligentRenderer::VertexBuffer(
 	const std::string & Name,
 	const void * BufferData,
-	unsigned int Count, 
+	unsigned int Count,
 	unsigned int Stride)
 {
 	Diligent::RefCntAutoPtr<Diligent::IBuffer> VertexBuffer;
@@ -174,7 +190,7 @@ Diligent::RefCntAutoPtr<Diligent::IBuffer> FDiligentRenderer::VertexBuffer(
 	return VertexBuffer;
 }
 
-Diligent::RefCntAutoPtr<Diligent::IBuffer> FDiligentRenderer::IndexBuffer(const std::string & Name, 
+Diligent::RefCntAutoPtr<Diligent::IBuffer> FDiligentRenderer::IndexBuffer(const std::string & Name,
 	const void * BufferData,
 	unsigned int Count)
 {
@@ -231,7 +247,7 @@ Diligent::RefCntAutoPtr<Diligent::IPipelineState> FDiligentRenderer::DefaultPipe
 }
 
 Diligent::RefCntAutoPtr<Diligent::IPipelineState> FDiligentRenderer::PipelineState(
-	const std::string & Name, 
+	const std::string & Name,
 	const std::string& VSName,
 	const std::string& PSName,
 	Diligent::PipelineResourceLayoutDesc & PipelineResourceLayoutDesc,
@@ -305,10 +321,10 @@ HWND FDiligentRenderer::GetHWND() const
 
 Diligent::RefCntAutoPtr<Diligent::IBuffer> FDiligentRenderer::CreateConstantsBuffer(
 	const std::string & Name,
-	void * InitialData, 
+	void * InitialData,
 	unsigned long Size,
 	Diligent::USAGE Usage,
-	Diligent::BIND_FLAGS BindFlags, 
+	Diligent::BIND_FLAGS BindFlags,
 	Diligent::CPU_ACCESS_FLAGS CPUAccessFlags)
 {
 	Diligent::RefCntAutoPtr<Diligent::IBuffer> CBBuffer;
@@ -390,7 +406,7 @@ void FDiligentRenderer::PipelineResourceLayoutDesc(
 }
 
 Diligent::RefCntAutoPtr<Diligent::ITexture> FDiligentRenderer::ToTexture2D(
-	const std::string & Name, 
+	const std::string & Name,
 	const ks::PixelBuffer * PixelBuffer)
 {
 	assert(PixelBuffer);
@@ -418,4 +434,92 @@ Diligent::RefCntAutoPtr<Diligent::ITexture> FDiligentRenderer::ToTexture2D(
 Diligent::RefCntAutoPtr<Diligent::ITexture> FDiligentRenderer::GetDefaultTexture2D() const noexcept
 {
 	return DefaultTexture2D;
+}
+
+Diligent::RefCntAutoPtr<Diligent::ITexture> FDiligentRenderer::GetDefaultNormalTexture2D() const noexcept
+{
+	return DefaultNormalTexture2D;
+}
+
+ks::PixelBuffer * FDiligentRenderer::CreatePixelBuffer(Diligent::ITexture* Texture)
+{
+	assert(Texture);
+	const Diligent::TextureDesc TextureDesc = Texture->GetDesc();
+	assert(
+		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM ||
+		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM_SRGB);
+
+	Diligent::MappedTextureSubresource  MappedData;
+	Diligent::Box pMapRegion(0, TextureDesc.GetWidth(),0, TextureDesc.GetHeight());
+	ImmediateContext->MapTextureSubresource(Texture,
+		0,
+		0,
+		Diligent::MAP_TYPE::MAP_READ,
+		Diligent::MAP_FLAGS::MAP_FLAG_NONE,
+		nullptr,
+		MappedData);
+
+	const unsigned char* BufferData = reinterpret_cast<const unsigned char*>(MappedData.pData);
+	
+	ks::PixelBuffer* PixelBuffer = new ks::PixelBuffer(TextureDesc.GetWidth(),
+		TextureDesc.GetHeight(),
+		ks::PixelBuffer::FormatType::rgba8);
+
+	unsigned char * MutablePixelBufferData = PixelBuffer->getMutableData()[0];
+
+	for (size_t HeightIdx = 0; HeightIdx < TextureDesc.GetHeight(); HeightIdx++)
+	{
+		const size_t DstOffset = HeightIdx * TextureDesc.GetWidth() * 4;
+		const size_t SrcOffset = HeightIdx * MappedData.Stride;
+		const size_t CopyBytesCount = TextureDesc.GetWidth() * 4;
+		memcpy(MutablePixelBufferData + DstOffset,
+			BufferData + SrcOffset,
+			CopyBytesCount);
+	}
+
+	ImmediateContext->UnmapTextureSubresource(Texture, 0, 0);
+	return PixelBuffer;
+}
+
+std::array<ks::PixelBuffer*, 6> FDiligentRenderer::CreateCubeMapPixelBuffers(
+	const unsigned int TargetWidth,
+	const unsigned int TargetHeight,
+	const ks::PixelBuffer& EquirectangularHDRPixelBuffer)
+{
+	assert(EquirectangularHDRPixelBuffer.getType() == ks::PixelBuffer::FormatType::rgba8);
+
+	std::array<ks::PixelBuffer*, 6> PixelBuffers;
+
+	for (size_t i = 0; i < PixelBuffers.size(); i++)
+	{
+		ks::PixelBuffer* PixelBuffer = new ks::PixelBuffer(TargetWidth, TargetHeight, ks::PixelBuffer::FormatType::rgba8);
+		PixelBuffers[i] = PixelBuffer;
+		for (size_t HeightIdx = 0; HeightIdx < TargetHeight; HeightIdx++)
+		{
+			for (size_t WidthIdx = 0; WidthIdx < TargetWidth; WidthIdx++)
+			{
+				const glm::vec2 UV = glm::vec2((float)WidthIdx / (float)TargetWidth, 1.0 - (float)HeightIdx / (float)TargetHeight) * 2.0f - 1.0f;
+				glm::vec3 SamplePicker;
+				if (i == 0) { SamplePicker = glm::vec3(1.0f, UV.y, -UV.x); }
+				if (i == 1) { SamplePicker = glm::vec3(-1.0, UV.y, UV.x); }
+				if (i == 2) { SamplePicker = glm::vec3(UV.x, 1.0, -UV.y); }
+				if (i == 3) { SamplePicker = glm::vec3(UV.x, -1.0, UV.y); }
+				if (i == 4) { SamplePicker = glm::vec3(UV.x, UV.y, 1.0); }
+				if (i == 5) { SamplePicker = glm::vec3(-UV.x, UV.y, -1.0); }
+				SamplePicker = glm::normalize(SamplePicker);
+				const unsigned char * ImmutableData = EquirectangularHDRPixelBuffer.getImmutableData()[0];
+				unsigned int SourcePixelIndexX = ((atan2(SamplePicker.z, SamplePicker.x) + M_PI) / (M_PI * 2.0f)) * EquirectangularHDRPixelBuffer.getWidth();
+				unsigned int SourcePixelIndexY = (acos(SamplePicker.y) / M_PI) * EquirectangularHDRPixelBuffer.getHeight();
+				SourcePixelIndexX = glm::clamp<unsigned int>(SourcePixelIndexX, 0, EquirectangularHDRPixelBuffer.getWidth() - 1);
+				SourcePixelIndexY = glm::clamp<unsigned int>(SourcePixelIndexY, 0, EquirectangularHDRPixelBuffer.getHeight() - 1);
+				const unsigned int SourcePixelIndex = SourcePixelIndexY * EquirectangularHDRPixelBuffer.getWidth() + SourcePixelIndexX;
+				const unsigned int TargetPixelIndex = HeightIdx * TargetWidth + WidthIdx;
+				memcpy(PixelBuffer->getMutableData()[0] + (TargetPixelIndex * 4),
+					ImmutableData + (SourcePixelIndex * 4),
+					4);
+			}
+		}
+	}
+
+	return PixelBuffers;
 }

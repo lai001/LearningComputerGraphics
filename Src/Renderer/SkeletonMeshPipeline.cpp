@@ -74,7 +74,7 @@ void FSkeletonMeshPipeline::Render(double RunningTime,
 	{
 		SkeletonMeshPhongShadingVSHConstants.Model = SkeletonMesh->GetModelMatrix();
 		SkeletonMeshPhongShadingVSHConstants.View = Camera->GetViewMat();
-		SkeletonMeshPhongShadingVSHConstants.Projection = Camera->GetprojectionMat();
+		SkeletonMeshPhongShadingVSHConstants.Projection = Camera->GetProjectionMat();
 		const std::vector<glm::mat4> BonesTransforms = SkeletonMesh->GetTransforms();
 		memcpy(SkeletonMeshPhongShadingVSHConstants.Bones,
 			BonesTransforms.data(),

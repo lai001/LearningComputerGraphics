@@ -56,7 +56,7 @@ public:
 	void MoveDown();
 
 	glm::mat4 GetViewMat();
-	glm::mat4 GetprojectionMat();
+	glm::mat4 GetProjectionMat();
 	glm::vec3 GetPosition();
 	void SetPosition(const glm::vec3& NewPosition);
 

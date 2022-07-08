@@ -9,6 +9,8 @@
 #include "Renderer/SkyBoxPipeline.hpp"
 #include "Renderer/DirectionLightDepthMapPipeline.hpp" 
 #include "Renderer/DepthMapImage2DPipeline.hpp"
+#include "Renderer/PBRPipeline.hpp"
+#include "Renderer/PBRStaticMeshDrawable.hpp"
 
 class FScene : public IRenderRunLoop, public IInput
 {
@@ -22,6 +24,7 @@ private:
 	std::unique_ptr<FSkyBoxPipeline> SkyBoxPipeline = nullptr;
 	std::unique_ptr<FDirectionLightDepthMapPipeline> DirectionLightDepthMapPipeline = nullptr;
 	std::unique_ptr<FDepthMapImage2DPipeline> Image2DPipeline = nullptr;
+	std::unique_ptr<FPBRPipeline> PBRPipeline = nullptr;
 
 	FStaticMesh* StaticMesh = nullptr;
 	FStaticMeshDrawable* StaticMeshDrawable = nullptr;
@@ -38,17 +41,24 @@ private:
 	FStaticMesh* PointLightIndicatorMesh = nullptr;
 	FStaticMeshDrawable* PointLightIndicatorMeshDrawable = nullptr;
 
+	FStaticMesh* PBRStaticMesh = nullptr;
+	FPBRStaticMeshDrawable* PBRStaticMeshDrawable = nullptr;
+
 	FDirectionLightShadowMapInfo DirectionLightShadowMapInfo;
 
 	FCamera Camera;
 
 	bool IsQuitFlag = false;
 
-	GLFWInputSystem* InputSystem = nullptr;;
+	GLFWInputSystem* InputSystem = nullptr;
 
 	void CreateResources();
 
 	void LoadModels();
+
+	void RenderPBR(double RunningTime);
+
+	void SaveBackBufferTexture();
 
 public:
 	FScene(FDiligentRenderer* Renderer, GLFWInputSystem* InputSystem);

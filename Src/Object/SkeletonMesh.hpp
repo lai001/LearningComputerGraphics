@@ -7,21 +7,21 @@
 #include <assimp/anim.h>
 #include <glm/glm.hpp>
 #include <Foundation/Foundation.hpp>
+#include "BridgingModels/SkeletonVertex.hpp"
 #include "TextureDescription.hpp"
-#include "BridgingModels/Vertex.hpp"
 #include "BoneInfo.hpp"
 
 class FSkeletionSubMesh
 {
 public:
-	FSkeletionSubMesh(std::vector<FVertex> Vertices,
+	FSkeletionSubMesh(std::vector<FSkeletonVertex> Vertices,
 		std::vector<unsigned int> Indices,
 		std::vector<FTextureDescription*> Textures)
 		:Vertices(Vertices), Indices(Indices), Textures(Textures)
 	{
 	}
 
-	std::vector<FVertex> Vertices;
+	std::vector<FSkeletonVertex> Vertices;
 	std::vector<unsigned int> Indices;
 	std::vector<FTextureDescription*> Textures;
 };
@@ -46,7 +46,7 @@ protected:
 	bool IsFlipVertically = true;
 
 	void LoadModel();
-	FVertex CreateVertex(aiMesh * Mesh, int Index);
+	FSkeletonVertex CreateVertex(aiMesh * Mesh, int Index);
 	void ProcessNode(aiNode * Node);
 	FSkeletionSubMesh* CreateMesh(aiMesh * Mesh);
 	std::vector<FTextureDescription*> CreateTexture(aiMaterial * Material, aiTextureType Type);

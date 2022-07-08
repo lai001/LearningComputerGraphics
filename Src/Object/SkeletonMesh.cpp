@@ -80,13 +80,13 @@ void FSkeletonMesh::ProcessNode(aiNode* Node)
 
 FSkeletionSubMesh* FSkeletonMesh::CreateMesh(aiMesh* Mesh)
 {
-	std::vector<FVertex> Vertices;
+	std::vector<FSkeletonVertex> Vertices;
 	std::vector<unsigned int> Indices;
 	std::vector<FTextureDescription*> Textures;
 
 	for (int i = 0; i < Mesh->mNumVertices; i++)
 	{
-		FVertex Vertex = CreateVertex(Mesh, i);
+		FSkeletonVertex Vertex = CreateVertex(Mesh, i);
 		Vertices.push_back(Vertex);
 	}
 
@@ -126,9 +126,9 @@ std::vector<FTextureDescription*> FSkeletonMesh::CreateTexture(aiMaterial * Mate
 	return Textures;
 }
 
-FVertex FSkeletonMesh::CreateVertex(aiMesh* Mesh, int Index)
+FSkeletonVertex FSkeletonMesh::CreateVertex(aiMesh* Mesh, int Index)
 {
-	FVertex Vertex;
+	FSkeletonVertex Vertex;
 	Vertex.Position = ConvertVec3(&Mesh->mVertices[Index]);
 	Vertex.Normal = ConvertVec3(&Mesh->mNormals[Index]);
 	glm::vec3 TextureCoords = ConvertVec3(&Mesh->mTextureCoords[0][Index]);

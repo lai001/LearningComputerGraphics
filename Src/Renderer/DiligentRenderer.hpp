@@ -31,7 +31,8 @@ private:
 	Diligent::RefCntAutoPtr<Diligent::ISwapChain>		SwapChain;
 	Diligent::GraphicsAdapterInfo						AdapterAttribs;
 	std::vector<Diligent::DisplayModeAttribs>			DisplayModes;
-	Diligent::RefCntAutoPtr<Diligent::ITexture> DefaultTexture2D;
+	Diligent::RefCntAutoPtr<Diligent::ITexture>			DefaultTexture2D;
+	Diligent::RefCntAutoPtr<Diligent::ITexture>			DefaultNormalTexture2D;
 	HWND hWnd;
 
 public:
@@ -116,4 +117,12 @@ public:
 
 	Diligent::RefCntAutoPtr<Diligent::ITexture> GetDefaultTexture2D() const noexcept;
 
+	Diligent::RefCntAutoPtr<Diligent::ITexture>	GetDefaultNormalTexture2D() const noexcept;
+
+	ks::PixelBuffer* CreatePixelBuffer(Diligent::ITexture* Texture);
+
+	std::array<ks::PixelBuffer*, 6> CreateCubeMapPixelBuffers(
+		const unsigned int TargetWidth,
+		const unsigned int TargetHeight,
+		const ks::PixelBuffer& EquirectangularHDRPixelBuffer);
 };

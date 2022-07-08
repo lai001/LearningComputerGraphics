@@ -1,0 +1,19 @@
+Texture2D    Image2DTexture;
+SamplerState Image2DTexture_sampler;
+
+struct PSInput
+{
+	float4 Position		: SV_POSITION;
+	float2 TexCoords	: TEXCOORDS;
+};
+
+struct PSOutput
+{
+	float4 Color : SV_TARGET;
+};
+
+void main(in PSInput PSIn, out PSOutput PSOut)
+{
+	float r = Image2DTexture.Sample(Image2DTexture_sampler, PSIn.TexCoords).r;
+	PSOut.Color = float4(r, r, r, 1.0f);
+}

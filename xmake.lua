@@ -44,6 +44,7 @@ rule("LearningComputerGraphics.Copy")
         if os.exists(resourceDir) then
             os.rm(resourceDir)
         end
+        os.cp("Src/Renderer/Shader", path.join(resourceDir, "Shader"))
         os.cp("Resource", target:targetdir())
         os.cp("Vendor/DiligentEngine/bin/DiligentCore/Release/*.dll", target:targetdir())
         os.cp("Vendor/DiligentEngine/bin/DiligentCore/Debug/*.dll", target:targetdir())
@@ -62,8 +63,8 @@ target("LearningComputerGraphics")
     set_kind("binary")
     set_languages("c++17")
 
-    add_headerfiles("Resource/**.*")
-    add_headerfiles("Resource/**.*")
+    add_headerfiles("Src/Renderer/Shader/*.psh")
+    add_headerfiles("Src/Renderer/Shader/*.vsh")
 
     add_files("Src/main.cpp")
     add_files("Src/Scene.cpp")

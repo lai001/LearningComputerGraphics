@@ -10,13 +10,22 @@
 #include "BridgingModels/BaseVertex.hpp"
 #include "TextureDescription.hpp"
 
+struct FMeshVertex
+{
+	glm::vec3 Position;
+	glm::vec3 Normal;
+	glm::vec3 Tangents;
+	glm::vec3 Bitangents;
+	glm::vec2 TexCoords;
+};
+
 struct FStaticSubMesh
 {
-	std::vector<FBaseVertex> Vertices;
+	std::vector<FMeshVertex> Vertices;
 	std::vector<unsigned int> Indices;
 	std::vector<FTextureDescription*> Textures;
 
-	explicit FStaticSubMesh::FStaticSubMesh(std::vector<FBaseVertex> Vertices, 
+	explicit FStaticSubMesh::FStaticSubMesh(std::vector<FMeshVertex> Vertices,
 		std::vector<unsigned int> Indices, 
 		std::vector<FTextureDescription*> Textures)
 		:Vertices(Vertices), Indices(Indices), Textures(Textures)
@@ -42,7 +51,7 @@ protected:
 	bool IsFlipVertically = true;
 
 	void LoadModel();
-	FBaseVertex CreateVertex(aiMesh * Mesh, int Index);
+	FMeshVertex CreateVertex(aiMesh * Mesh, int Index);
 	void ProcessNode(aiNode * Node);
 	FStaticSubMesh* CreateMesh(aiMesh * Mesh);
 	std::vector<FTextureDescription*> CreateTexture(aiMaterial * Material, aiTextureType Type);

@@ -6,7 +6,7 @@
 #include "DiligentRenderer.hpp"
 #include "SubStaticMeshDrawableData.hpp"
 
-class FStaticMeshDrawable
+class FPBRStaticMeshDrawable
 {
 private:
 	const FStaticMesh* StaticMesh = nullptr;
@@ -14,9 +14,9 @@ private:
 	void CreateResource(FDiligentRenderer * Renderer);
 
 public:
-	FStaticMeshDrawable(FDiligentRenderer * Renderer, const FStaticMesh* StaticMesh);
-	FStaticMeshDrawable(std::vector<FSubStaticMeshDrawableData> SubStaticMeshDrawableDatas);
-	~FStaticMeshDrawable();
+	FPBRStaticMeshDrawable(FDiligentRenderer * Renderer, const FStaticMesh* StaticMesh);
+	FPBRStaticMeshDrawable(std::vector<FSubStaticMeshDrawableData> SubStaticMeshDrawableDatas);
+	~FPBRStaticMeshDrawable();
 
 	std::vector<FSubStaticMeshDrawableData> GetSubStaticMeshDrawableDatas() const;
 

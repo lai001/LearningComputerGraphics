@@ -19,7 +19,7 @@ FStaticMesh::~FStaticMesh()
 
 FStaticMesh * FStaticMesh::New(std::string ModelFilePath)
 {
-	int ASSIMP_LOAD_FLAGS = (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_MakeLeftHanded);
+	int ASSIMP_LOAD_FLAGS = (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_MakeLeftHanded | aiProcess_CalcTangentSpace);
 	std::unique_ptr<Assimp::Importer> Importer = std::make_unique<Assimp::Importer>();
 	
 	const aiScene* Scene = Importer->ReadFile(ModelFilePath, ASSIMP_LOAD_FLAGS);
@@ -72,13 +72,13 @@ void FStaticMesh::ProcessNode(aiNode* Node)
 
 FStaticSubMesh* FStaticMesh::CreateMesh(aiMesh* Mesh)
 {
-	std::vector<FBaseVertex> Vertices;
+	std::vector<FMeshVertex> Vertices;
 	std::vector<unsigned int> Indices;
 	std::vector<FTextureDescription*> Textures;
 
 	for (int i = 0; i < Mesh->mNumVertices; i++)
 	{
-		FBaseVertex Vertex = CreateVertex(Mesh, i);
+		FMeshVertex Vertex = CreateVertex(Mesh, i);
 		Vertices.push_back(Vertex);
 	}
 
@@ -93,10 +93,30 @@ FStaticSubMesh* FStaticMesh::CreateMesh(aiMesh* Mesh)
 
 	aiMaterial* Material = Scene->mMaterials[Mesh->mMaterialIndex];
 
-	std::vector<FTextureDescription*> DiffuseTexturesGroup = CreateTexture(Material, aiTextureType::aiTextureType_DIFFUSE);
-	Textures.insert(Textures.end(), DiffuseTexturesGroup.begin(), DiffuseTexturesGroup.end());
-	std::vector<FTextureDescription*> SpecularTexturesGroup = CreateTexture(Material, aiTextureType::aiTextureType_SPECULAR);
-	Textures.insert(Textures.end(), SpecularTexturesGroup.begin(), SpecularTexturesGroup.end());
+	std::unordered_map<aiTextureType, std::string> TextureTypes;
+	TextureTypes[aiTextureType::aiTextureType_DIFFUSE] = "Diffuse";
+	TextureTypes[aiTextureType::aiTextureType_SPECULAR] = "Specular";
+	TextureTypes[aiTextureType::aiTextureType_NORMALS] = "Normals";
+	TextureTypes[aiTextureType::aiTextureType_METALNESS] = "Metalness";
+	TextureTypes[aiTextureType::aiTextureType_DIFFUSE_ROUGHNESS] = "DiffuseRoughness";
+	TextureTypes[aiTextureType::aiTextureType_AMBIENT] = "Ambient";
+	TextureTypes[aiTextureType::aiTextureType_AMBIENT_OCCLUSION] = "AmbientOcclusion";
+	TextureTypes[aiTextureType::aiTextureType_BASE_COLOR] = "BaseColor";
+	TextureTypes[aiTextureType::aiTextureType_HEIGHT] = "Height";
+
+	for (const auto& Item : TextureTypes)
+	{
+		std::vector<FTextureDescription*> TexturesGroup = CreateTexture(Material, Item.first);
+		Textures.insert(Textures.end(), TexturesGroup.begin(), TexturesGroup.end());
+		if (TexturesGroup.empty() == false)
+		{
+			spdlog::debug(Item.second);
+			for (const auto& Texture : TexturesGroup)
+			{
+				spdlog::debug(Texture->GetFilepath());
+			}
+		}
+	}
 
 	return new FStaticSubMesh(Vertices, Indices, Textures);
 }
@@ -141,11 +161,13 @@ std::vector<const FStaticSubMesh*> FStaticMesh::GetSubMeshs() const
 	return Meshs;
 }
 
-FBaseVertex FStaticMesh::CreateVertex(aiMesh* Mesh, int Index)
+FMeshVertex FStaticMesh::CreateVertex(aiMesh* Mesh, int Index)
 {
-	FBaseVertex Vertex;
+	FMeshVertex Vertex;
 	Vertex.Position = ConvertVec3(&Mesh->mVertices[Index]);
 	Vertex.Normal = ConvertVec3(&Mesh->mNormals[Index]);
+	Vertex.Bitangents = ConvertVec3(&Mesh->mBitangents[Index]);
+	Vertex.Tangents = ConvertVec3(&Mesh->mTangents[Index]);
 	glm::vec3 TextureCoords = ConvertVec3(&Mesh->mTextureCoords[0][Index]);
 	if (IsFlipVertically)
 	{

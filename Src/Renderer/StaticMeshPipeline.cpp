@@ -21,7 +21,7 @@ void FStaticMeshPipeline::Render(const FRenderInfo& RenderInfo)
 	{
 		PhongShadingVSHConstants.Model = StaticMesh->GetModelMatrix();
 		PhongShadingVSHConstants.View = RenderInfo.Camera->GetViewMat();
-		PhongShadingVSHConstants.Projection = RenderInfo.Camera->GetprojectionMat();
+		PhongShadingVSHConstants.Projection = RenderInfo.Camera->GetProjectionMat();
 	}
 
 	FUtil::CopyDataToBuffer(Renderer->GetImmediateContext(),

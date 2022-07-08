@@ -14,6 +14,7 @@
 #include "SpotLightUIComponent.hpp"
 #include "StaticMeshUIComponent.hpp"
 #include "DirectionLightDepthMap.hpp"
+#include "PBRUIComponent.hpp"
 
 class FMainView : public IGUIInterface
 {
@@ -83,6 +84,13 @@ public:
 	{
 		FDirectionLightDepthMapUIComponent* Component = new FDirectionLightDepthMapUIComponent();
 		Component->DirectionLightShadowMapInfo = DirectionLightShadowMapInfo;
+		ObjectPropertyUIComponents.push_back(Component);
+	}
+
+	void PushComponent(FPBRPSHConstants* PBRPSHConstants)
+	{
+		FPBRUIComponent* Component = new FPBRUIComponent();
+		Component->PBRPSHConstants = PBRPSHConstants;
 		ObjectPropertyUIComponents.push_back(Component);
 	}
 

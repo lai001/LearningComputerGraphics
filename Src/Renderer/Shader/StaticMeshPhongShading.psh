@@ -1,0 +1,258 @@
+Texture2D    DiffuseTexture;
+SamplerState DiffuseTexture_sampler;
+
+Texture2D    SpecularTexture;
+SamplerState SpecularTexture_sampler;
+
+Texture2D    DirctionLightShadowMapTexture;
+SamplerState DirctionLightShadowMapTexture_sampler;
+
+struct FDirectionalLight
+{
+	float3 Direction;
+	float N1;
+	float3 Ambient;
+	float N2;
+	float3 Diffuse;
+	float N3;
+	float3 Specular;
+	float N4;
+	float3 N5;
+	int isEnable;
+};
+
+struct FPointLight
+{
+	float3 Position;
+	float N1;
+	float3 Ambient;
+	float N2;
+	float3 Diffuse;
+	float N3;
+	float3 Specular;
+	float N4;
+	float Constant;
+	float Linear;
+	float Quadratic;
+	int isEnable;
+};
+
+struct FSpotLight
+{
+	float3 Position;
+	float N1;
+	float3 Direction;
+	float N2;
+	float3 Ambient;
+	float N3;
+	float3 Diffuse;
+	float N4;
+	float3 Specular;
+	float N5;
+	float CutOff;
+	float OuterCutOff;
+	float Constant;
+	float Linear;
+	float Quadratic;
+	int isEnable;
+	float N6;
+	float N7;
+};
+
+cbuffer FPhongShadingPSHConstants
+{
+	FSpotLight SpotLight;
+	FPointLight PointLight;
+	FDirectionalLight DirectionalLight;
+	float3 ViewPosition;
+	float Shininess;
+	float3 N1;
+	int isUnlit;
+};
+
+struct PSInput
+{
+	float4 Position			 : SV_POSITION;
+	float4 FragPosition		 : FRAGPOSITION;
+	float3 Normal			 : NORMAL;
+	float2 TexCoords		 : TEXCOORDS;
+	float4 FragPosLightSpace : FRAGPOSLIGHTSPACE;
+};
+
+struct PSOutput
+{
+	float4 Color : SV_TARGET;
+};
+
+struct Material 
+{
+	Texture2D DiffuseTexture;
+	Texture2D SpecularTexture;
+	float Shininess;
+};
+
+float PhongAttenuationRatio(const float constant, const float Linear, const float quadratic, float distance)
+{
+	return 1.0 / (constant + Linear * distance + quadratic * (distance * distance));
+}
+
+float4 PhongPointLight(FPointLight iPointLight,
+	Material iMaterial,
+	float2 iUV,
+	float3 iNormal,
+	float3 iViewPosition,
+	float3 iFragPos)
+{
+	float lightToFragPosDistance = length(iPointLight.Position - iFragPos);
+	float attenuationRatio = PhongAttenuationRatio(iPointLight.Constant, iPointLight.Linear, iPointLight.Quadratic, lightToFragPosDistance);
+
+	// ambient
+	float3 ambientColor = iPointLight.Ambient * attenuationRatio;
+
+	// diffuse 
+	float3 norm = normalize(iNormal);
+	float3 lightDir = normalize(iPointLight.Position - iFragPos);
+	float diff = max(dot(norm, lightDir), 0.0);
+	float3 lightDiffuseColor = diff * iMaterial.DiffuseTexture.Sample(DiffuseTexture_sampler, iUV).xyz * iPointLight.Diffuse * attenuationRatio;
+	
+	// specular
+	float3 viewDir = normalize(iViewPosition - iFragPos);
+	float3 reflectDir = reflect(-lightDir, norm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), iMaterial.Shininess);
+	
+	float3 lightSpecularColor = spec * iPointLight.Specular * attenuationRatio * iMaterial.SpecularTexture.Sample(SpecularTexture_sampler, iUV).xyz;
+
+	float4 mixLightingColor = float4(ambientColor + lightDiffuseColor + lightSpecularColor, 1.0);
+	return mixLightingColor * float(clamp(iPointLight.isEnable, 0, 1));
+}
+
+float4 PhongDirectionalLight(FDirectionalLight iDirectionalLight,
+							Material iMaterial,
+							float2 iUV,
+							float3 iNormal,
+							float3 iViewPosition,
+							float3 iFragPos)
+{
+    // ambient
+    float3 ambientColor = iDirectionalLight.Ambient;
+	
+	// diffuse 
+    float3 norm = normalize(iNormal);
+    float3 lightDir = normalize(-iDirectionalLight.Direction);
+    float diff = max(dot(norm, lightDir), 0.0);
+    float3 diffuseColor = diff * iDirectionalLight.Diffuse * iMaterial.DiffuseTexture.Sample(DiffuseTexture_sampler, iUV).xyz;
+	
+	// specular
+	float3 viewDir = normalize(iViewPosition - iFragPos);
+	float3 reflectDir = reflect(-lightDir, norm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), iMaterial.Shininess);
+	float3 specularColor = spec * iDirectionalLight.Specular * iMaterial.SpecularTexture.Sample(SpecularTexture_sampler, iUV).xyz;
+
+	float4 mixLightingColor = float4(ambientColor + diffuseColor + specularColor, 1.0);
+	return mixLightingColor * float(clamp(iDirectionalLight.isEnable, 0, 1));
+}
+
+float4 PhongSpotLight(FSpotLight iSpotLight,
+					Material iMaterial,
+					float2 iUV,
+					float3 iNormal,
+					float3 iViewPosition,
+					float3 iFragPos)
+{
+	float lightToFragPosDistance = length(iSpotLight.Position - iFragPos);
+	float attenuationRatio = PhongAttenuationRatio(iSpotLight.Constant, iSpotLight.Linear, iSpotLight.Quadratic, lightToFragPosDistance);
+
+    // ambient
+    float3 ambientColor = iSpotLight.Ambient * attenuationRatio;
+	
+	// diffuse 
+    float3 norm = normalize(iNormal);
+    float3 lightDir = normalize(iSpotLight.Position - iFragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    float3 diffuseColor = diff * iSpotLight.Diffuse * attenuationRatio * iMaterial.DiffuseTexture.Sample(DiffuseTexture_sampler, iUV).xyz;
+	
+	// specular
+	float3 viewDir = normalize(iViewPosition - iFragPos);
+	float3 reflectDir = reflect(-lightDir, norm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), iMaterial.Shininess);
+	float3 specularColor = spec * iSpotLight.Specular * attenuationRatio * iMaterial.SpecularTexture.Sample(SpecularTexture_sampler, iUV).xyz;
+
+	// spotlight intensity
+    float theta = dot(lightDir, normalize(-iSpotLight.Direction)); 
+	float alpha		= (theta		   - iSpotLight.OuterCutOff);
+    float epsilon	= iSpotLight.CutOff - iSpotLight.OuterCutOff;
+    float intensity = clamp(alpha / epsilon, 0.0, 1.0);
+
+	// multiply spotlight intensity
+	ambientColor *= intensity;
+	diffuseColor *= intensity;
+	specularColor *= intensity;
+
+	float4 mixLightingColor = float4(ambientColor + diffuseColor + specularColor, 1.0);
+	return mixLightingColor * float(clamp(iSpotLight.isEnable, 0, 1));
+}
+
+float4 PhongCompositionLightColor(FDirectionalLight iDirectionalLight,
+								FPointLight iPointLight,
+								FSpotLight iSpotLight,
+								Material iMaterial,
+								float2 iUV,
+								float3 iNormal,
+								float3 iViewPosition,
+								float3 iFragPos)
+{
+	float4 pointLight = PhongPointLight(iPointLight,
+									iMaterial,
+									iUV,
+									iNormal,
+									iViewPosition,
+									iFragPos);
+	float4 directionalLight = PhongDirectionalLight(iDirectionalLight,
+												iMaterial,
+												iUV,
+												iNormal,
+												iViewPosition,
+												iFragPos);
+	float4 spotLight = PhongSpotLight(iSpotLight,
+									iMaterial,
+									iUV,
+									iNormal,
+									iViewPosition,
+									iFragPos);
+	return (pointLight + directionalLight + spotLight);
+}
+
+float ShadowCalculation(float4 fragPosLightSpace)
+{
+	float3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = DirctionLightShadowMapTexture.Sample(DirctionLightShadowMapTexture_sampler, projCoords.xy).r; 
+    float currentDepth = projCoords.z;
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+	if(projCoords.z > 1.0)
+	{
+        shadow = 0.0;
+	}
+    return shadow;
+}
+
+void main(in PSInput PSIn, out PSOutput PSOut)
+{
+	Material material;
+	material.DiffuseTexture = DiffuseTexture;
+	material.Shininess = Shininess;
+	material.SpecularTexture = SpecularTexture;
+	
+	float4 textureColor = DiffuseTexture.Sample(DiffuseTexture_sampler, PSIn.TexCoords);
+    float4 lightColor = PhongCompositionLightColor(DirectionalLight, 
+												PointLight,
+												SpotLight, 
+												material, 
+												PSIn.TexCoords, 
+												PSIn.Normal,
+												ViewPosition, 
+												PSIn.FragPosition.xyz);
+	float isShadow = ShadowCalculation(PSIn.FragPosLightSpace);
+	PSOut.Color = lerp(textureColor * lightColor, textureColor, clamp(isUnlit, 0, 1));
+	PSOut.Color = lerp(PSOut.Color, float4(0.0, 0.0, 0.0, 1.0), isShadow);
+}

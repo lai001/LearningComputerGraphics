@@ -1,14 +1,15 @@
 #pragma once
 #include <glm/glm.hpp>
 
-struct FVertex {
+struct FSkeletonVertex 
+{
 	glm::vec3 Position;
 	glm::vec3 Normal;
 	glm::vec2 TexCoords;
 	int Ids[4];
 	float Weights[4];
 
-	FVertex()
+	FSkeletonVertex()
 	{
 		memset(Ids, 0, sizeof(Ids));
 		memset(Weights, 0, sizeof(Weights));

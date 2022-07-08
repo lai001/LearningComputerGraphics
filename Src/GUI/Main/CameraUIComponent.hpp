@@ -16,13 +16,14 @@ struct FCameraUIComponent : public IObjectPropertyUIComponent
 		glm::vec3 Position = Camera->GetPosition();
 		float CameraSpeed = Camera->GetCameraSpeed();
 		float CameraFov = Camera->GetFov();
-
+		
 		ImGui::Text(GetName().c_str());
-		ImGui::DragFloat("camera fov", &CameraFov, 0.05f, 1.0, 100.0f);
-		ImGui::DragFloat("camera speed", &CameraSpeed, 0.02f, 0.01f, 10.0);
-		ImGui::DragFloat3("camera postion", glm::value_ptr(Position), 0.05f , -100.0f, 100.0f);
-		ImGui::Checkbox("camera is mouse movable", &Camera->IsMouseMovable);
-		ImGui::Checkbox("camera is movable", &Camera->IsMovable);
+		ImGui::Text("CameraFront x = %.2f, y = %.2f, z = %.2f", Camera->GetCameraFront().x, Camera->GetCameraFront().y, Camera->GetCameraFront().z);
+		ImGui::DragFloat("Camera fov", &CameraFov, 0.05f, 1.0, 100.0f);
+		ImGui::DragFloat("Camera speed", &CameraSpeed, 0.02f, 0.01f, 10.0);
+		ImGui::DragFloat3("Camera postion", glm::value_ptr(Position), 0.05f , -100.0f, 100.0f);
+		ImGui::Checkbox("Camera is mouse movable", &Camera->IsMouseMovable);
+		ImGui::Checkbox("Camera is movable", &Camera->IsMovable);
 
 		Camera->SetCameraSpeed(CameraSpeed);
 		Camera->SetFov(CameraFov);

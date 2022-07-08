@@ -68,7 +68,7 @@ void FSkyBoxPipeline::Render(double RunningTime,
 	assert(Camera);
 	
 	SkyBoxVSHConstants.View = glm::mat4(glm::mat3(Camera->GetViewMat()));
-	SkyBoxVSHConstants.Projection = Camera->GetprojectionMat();
+	SkyBoxVSHConstants.Projection = Camera->GetProjectionMat();
 
 	FUtil::CopyDataToBuffer(Renderer->GetImmediateContext(),
 		&SkyBoxVSHConstants,

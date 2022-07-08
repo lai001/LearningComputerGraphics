@@ -21,6 +21,8 @@ void FMainView::Render(double RunningTime)
 	}
 	ImGuiWindowFlags Flags = 0;
 	Flags |= ImGuiWindowFlags_MenuBar;
+	//ImGui::SetNextWindowPos(ImVec2(60, 0));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(400, 300), ImVec2(500, 500), nullptr, nullptr);
 	RenderWindow("Debug", nullptr, Flags, [&]()
 	{
 		ImGui::Text("Time %.3f, Application average %.3f ms/frame (%.1f FPS)", RunningTime, 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -46,6 +48,8 @@ void FMainView::Render(double RunningTime)
 
 	if (bIsShowObjectPropertyWindow && SelectedObjectPropertyUIComponent)
 	{
+		//ImGui::SetNextWindowPos(ImVec2(60, 320));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(400, 300), ImVec2(600, 500), nullptr, nullptr);
 		RenderWindow("ObjectProperty", nullptr, 0, [&]()
 		{
 			SelectedObjectPropertyUIComponent->Draw();

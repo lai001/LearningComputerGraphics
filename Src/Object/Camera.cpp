@@ -119,7 +119,7 @@ glm::mat4 FCamera::GetViewMat()
 	return View;
 }
 
-glm::mat4 FCamera::GetprojectionMat()
+glm::mat4 FCamera::GetProjectionMat()
 {
 	return Projection;
 }

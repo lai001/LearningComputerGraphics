@@ -1,0 +1,152 @@
+Texture2D    AlbedoTexture;
+SamplerState AlbedoTexture_sampler;
+
+Texture2D    NormalTexture;
+SamplerState NormalTexture_sampler;
+
+Texture2D    MetallicTexture;
+SamplerState MetallicTexture_sampler;
+
+Texture2D    RoughnessTexture;
+SamplerState RoughnessTexture_sampler;
+
+static const float PI = 3.1415;
+
+float D(float3 N, float3 H, float a)
+{
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+	
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+	
+    return nom / denom;
+}
+
+float3 F(float3 H, float3 V, float3 F0)
+{
+	float cosTheta = dot(H, V);
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+float SubG(float InAngle, float k)
+{
+    float nom = InAngle;
+    float denom = InAngle * (1.0 - k) + k;
+    return nom / denom;
+}
+  
+float G(float3 N, float3 V, float3 L, float k)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx1 = SubG(NdotV, k); 
+    float ggx2 = SubG(NdotL, k); 
+    return ggx1 * ggx2;
+}
+
+struct FDirectionalLight
+{
+	float3 Direction;
+	float N1;
+	float3 Ambient;
+	float N2;
+	float3 Diffuse;
+	float N3;
+	float3 Specular;
+	float N4;
+	float3 N5;
+	int isEnable;
+};
+
+struct FPointLight
+{
+	float3 Position;
+	float N1;
+	float3 Ambient;
+	float N2;
+	float3 Diffuse;
+	float N3;
+	float3 Specular;
+	float N4;
+	float Constant;
+	float Linear;
+	float Quadratic;
+	int isEnable;
+};
+
+struct FSpotLight
+{
+	float3 Position;
+	float N1;
+	float3 Direction;
+	float N2;
+	float3 Ambient;
+	float N3;
+	float3 Diffuse;
+	float N4;
+	float3 Specular;
+	float N5;
+	float CutOff;
+	float OuterCutOff;
+	float Constant;
+	float Linear;
+	float Quadratic;
+	int isEnable;
+	float N6;
+	float N7;
+};
+
+cbuffer PBRPSHConstants
+{
+	FSpotLight SpotLight;
+	FPointLight PointLight;
+	FDirectionalLight DirectionalLight;
+	float3 ViewPosition;
+	float Shininess;
+	float3 N1;
+	int isUnlit;
+	float RoughnessFactor;
+	float MetalnessFactor;
+};
+
+struct PSInput
+{
+	float4 Position		: SV_POSITION;
+	float4 FragPosition	: FRAGPOSITION;
+	float3 Normal		: NORMAL;
+	float2 TexCoords	: TEXCOORDS;
+	float3x3 TBN		: TBN0;
+};
+
+struct PSOutput
+{
+	float4 Color : SV_TARGET;
+};
+
+void main(in PSInput PSIn, out PSOutput PSOut)
+{
+	float4 albedoColor = AlbedoTexture.Sample(AlbedoTexture_sampler, PSIn.TexCoords);
+	float metalness = MetallicTexture.Sample(MetallicTexture_sampler, PSIn.TexCoords).x * MetalnessFactor;
+	float roughness = RoughnessTexture.Sample(RoughnessTexture_sampler, PSIn.TexCoords).x * RoughnessFactor;
+
+	float3 normalT = normalize(NormalTexture.Sample(NormalTexture_sampler, PSIn.TexCoords).xyz * 2.0f - 1.0f);
+	float3 normalW = normalize(mul(PSIn.TBN, normalT));
+
+	float3 DirectionalLightDirection = normalize(-DirectionalLight.Direction);
+	float3 viewDirection = normalize(ViewPosition - PSIn.FragPosition.xyz);
+	float3 halfwayDirection = normalize(DirectionalLightDirection + viewDirection);
+	float NOV = dot(normalW, viewDirection);
+	float NOH = dot(normalW, halfwayDirection);
+	float NOL = dot(normalW, DirectionalLightDirection);
+
+	float d = D(normalW, halfwayDirection, roughness);
+	float3 f = F(halfwayDirection, viewDirection, lerp(float3(1.0f, 1.0f, 1.0f) * 0.04f, albedoColor.xyz, metalness));
+	float g = G(normalW, viewDirection, DirectionalLightDirection, pow((roughness + 1.0f), 2.0f) / 8.0f);
+	float3 sbrdf = d * f * g / (4.0f * max(NOV * NOL, 0.01f));
+	float3 dbrdf = lerp(float3(1, 1, 1) - f, float3(0, 0, 0), metalness) * albedoColor.xyz;
+	float3 color = (dbrdf + sbrdf) * NOL;
+	PSOut.Color = float4(color, 1.0f);
+}

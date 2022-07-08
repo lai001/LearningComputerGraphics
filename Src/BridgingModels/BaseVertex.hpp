@@ -1,7 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
 
-class FBaseVertex {
+class FBaseVertex
+{
 public:
 	glm::vec3 Position;
 	glm::vec3 Normal;

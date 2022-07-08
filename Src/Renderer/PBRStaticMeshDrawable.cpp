@@ -1,29 +1,30 @@
-#include "StaticMeshDrawable.hpp"
+#include "PBRStaticMeshDrawable.hpp"
 #include "Util/Util.hpp"
+#include "BridgingModels/PBRStaticMeshVertex.hpp"
 
-FStaticMeshDrawable::FStaticMeshDrawable(FDiligentRenderer * Renderer,
+FPBRStaticMeshDrawable::FPBRStaticMeshDrawable(FDiligentRenderer * Renderer,
 	const FStaticMesh * StaticMesh)
 	:StaticMesh(StaticMesh)
 {
 	CreateResource(Renderer);
 }
 
-FStaticMeshDrawable::FStaticMeshDrawable(
+FPBRStaticMeshDrawable::FPBRStaticMeshDrawable(
 	std::vector<FSubStaticMeshDrawableData> SubStaticMeshDrawableDatas)
 	: SubStaticMeshDrawableDatas(SubStaticMeshDrawableDatas)
 {
 }
 
-FStaticMeshDrawable::~FStaticMeshDrawable()
+FPBRStaticMeshDrawable::~FPBRStaticMeshDrawable()
 {
 }
 
-std::vector<FSubStaticMeshDrawableData> FStaticMeshDrawable::GetSubStaticMeshDrawableDatas() const
+std::vector<FSubStaticMeshDrawableData> FPBRStaticMeshDrawable::GetSubStaticMeshDrawableDatas() const
 {
 	return SubStaticMeshDrawableDatas;
 }
 
-Diligent::DrawIndexedAttribs FStaticMeshDrawable::GetDrawAttrs(const FSubStaticMeshDrawableData& SubStaticMeshDrawableData) const noexcept
+Diligent::DrawIndexedAttribs FPBRStaticMeshDrawable::GetDrawAttrs(const FSubStaticMeshDrawableData& SubStaticMeshDrawableData) const noexcept
 {
 	Diligent::DrawIndexedAttribs DrawAttrs;
 	DrawAttrs.IndexType = Diligent::VT_UINT32;
@@ -32,28 +33,30 @@ Diligent::DrawIndexedAttribs FStaticMeshDrawable::GetDrawAttrs(const FSubStaticM
 	return DrawAttrs;
 }
 
-const FStaticMesh * FStaticMeshDrawable::GetStaticMesh() const noexcept
+const FStaticMesh * FPBRStaticMeshDrawable::GetStaticMesh() const noexcept
 {
 	return StaticMesh;
 }
 
-void FStaticMeshDrawable::CreateResource(FDiligentRenderer * Renderer)
+void FPBRStaticMeshDrawable::CreateResource(FDiligentRenderer * Renderer)
 {
 	SubStaticMeshDrawableDatas.clear();
 	const std::vector<const FStaticSubMesh*> SubMeshs = StaticMesh->GetSubMeshs();
 	for (const auto& SubMesh : SubMeshs)
 	{
 		FSubStaticMeshDrawableData SubStaticMeshDrawableData;
-		std::vector<FBaseVertex> Vertices;
+		std::vector<FPBRStaticMeshVertex> Vertices;
 		for (const FMeshVertex& MeshVertex : SubMesh->Vertices)
 		{
-			FBaseVertex BaseVertex;
-			BaseVertex.Normal = MeshVertex.Normal;
-			BaseVertex.Position = MeshVertex.Position;
-			BaseVertex.TexCoords = MeshVertex.TexCoords;
-			Vertices.push_back(BaseVertex);
+			FPBRStaticMeshVertex PBRStaticMeshVertex;
+			PBRStaticMeshVertex.Normal = MeshVertex.Normal;
+			PBRStaticMeshVertex.Position = MeshVertex.Position;
+			PBRStaticMeshVertex.TexCoords = MeshVertex.TexCoords;
+			PBRStaticMeshVertex.Bitangents = MeshVertex.Bitangents;
+			PBRStaticMeshVertex.Tangents = MeshVertex.Tangents;
+			Vertices.push_back(PBRStaticMeshVertex);
 		}
-		SubStaticMeshDrawableData.VertexBuffer = Renderer->VertexBuffer("VertexBuffer0", Vertices.data(), Vertices.size(), sizeof(FBaseVertex));
+		SubStaticMeshDrawableData.VertexBuffer = Renderer->VertexBuffer("VertexBuffer0", Vertices.data(), Vertices.size(), sizeof(FPBRStaticMeshVertex));
 		SubStaticMeshDrawableData.IndexBuffer = Renderer->IndexBuffer("IndexBuffer0", SubMesh->Indices.data(), SubMesh->Indices.size());
 		SubStaticMeshDrawableData.IndexCount = SubMesh->Indices.size();
 		for (FTextureDescription* TextureDescription : SubMesh->Textures)

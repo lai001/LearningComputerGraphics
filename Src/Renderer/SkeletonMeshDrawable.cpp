@@ -19,7 +19,7 @@ void FSkeletonMeshDrawable::CreateResource(FDiligentRenderer * Renderer)
 	for (const auto& SubMesh : SubMeshs)
 	{
 		FSubStaticMeshDrawableData SubStaticMeshDrawableData;
-		SubStaticMeshDrawableData.VertexBuffer = Renderer->VertexBuffer("VertexBuffer0", SubMesh->Vertices.data(), SubMesh->Vertices.size(), sizeof(FVertex));
+		SubStaticMeshDrawableData.VertexBuffer = Renderer->VertexBuffer("VertexBuffer0", SubMesh->Vertices.data(), SubMesh->Vertices.size(), sizeof(FSkeletonVertex));
 		SubStaticMeshDrawableData.IndexBuffer = Renderer->IndexBuffer("IndexBuffer0", SubMesh->Indices.data(), SubMesh->Indices.size());
 		SubStaticMeshDrawableData.IndexCount = SubMesh->Indices.size();
 		for (FTextureDescription* TextureDescription : SubMesh->Textures)
