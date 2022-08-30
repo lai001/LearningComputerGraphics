@@ -117,8 +117,9 @@ FStaticSubMesh* FStaticMesh::CreateMesh(aiMesh* Mesh)
 			}
 		}
 	}
-
-	return new FStaticSubMesh(Vertices, Indices, Textures);
+	FStaticSubMesh* StaticSubMesh = new FStaticSubMesh(Vertices, Indices, Textures);
+	StaticSubMesh->Name = std::string(Mesh->mName.C_Str());
+	return StaticSubMesh;
 }
 
 std::vector<FTextureDescription*> FStaticMesh::CreateTexture(aiMaterial * Material, aiTextureType Type)

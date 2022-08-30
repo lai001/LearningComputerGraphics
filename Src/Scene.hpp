@@ -11,6 +11,7 @@
 #include "Renderer/DepthMapImage2DPipeline.hpp"
 #include "Renderer/PBRPipeline.hpp"
 #include "Renderer/PBRStaticMeshDrawable.hpp"
+#include "Renderer/IBLBake.hpp"
 
 class FScene : public IRenderRunLoop, public IInput
 {
@@ -43,6 +44,8 @@ private:
 
 	FStaticMesh* PBRStaticMesh = nullptr;
 	FPBRStaticMeshDrawable* PBRStaticMeshDrawable = nullptr;
+
+	std::unique_ptr<FIBLBake> Bake = nullptr;
 
 	FDirectionLightShadowMapInfo DirectionLightShadowMapInfo;
 

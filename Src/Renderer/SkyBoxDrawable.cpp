@@ -4,6 +4,15 @@ FSkyBoxDrawable::FSkyBoxDrawable(FDiligentRenderer * Renderer,
 	FSkyBox * SkyBox)
 	:Renderer(Renderer), SkyBox(SkyBox)
 {
+	TextureCube = Renderer->CreateTextureCube("SkyBox",
+		SkyBox->GetPixelBuffers());
+	CreateResource(Renderer);
+}
+
+FSkyBoxDrawable::FSkyBoxDrawable(FDiligentRenderer* Renderer, Diligent::RefCntAutoPtr<Diligent::ITexture> TextureCube)
+	: Renderer(Renderer), TextureCube(TextureCube)
+{
+	assert(TextureCube);
 	CreateResource(Renderer);
 }
 
@@ -17,6 +26,7 @@ Diligent::RefCntAutoPtr<Diligent::ITextureView> FSkyBoxDrawable::GetTextureView(
 	}
 	else
 	{
+		assert(false);
 		return Diligent::RefCntAutoPtr<Diligent::ITextureView>();
 	}
 }
@@ -42,9 +52,6 @@ Diligent::DrawIndexedAttribs FSkyBoxDrawable::GetDrawAttrs() const noexcept
 
 void FSkyBoxDrawable::CreateResource(FDiligentRenderer * Renderer)
 {
-	TextureCube = Renderer->CreateTextureCube("SkyBox",
-		SkyBox->GetPixelBuffers());
-
 	std::vector<glm::vec3> Vertexs = {
 		glm::vec3(-1.0f,  1.0f, -1.0f), 
 		glm::vec3( 1.0f,  1.0f, -1.0f), 

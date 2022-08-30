@@ -10,6 +10,15 @@ SamplerState MetallicTexture_sampler;
 Texture2D    RoughnessTexture;
 SamplerState RoughnessTexture_sampler;
 
+TextureCube PreFilterCubeMapTexture;
+SamplerState PreFilterCubeMapTexture_sampler;
+
+TextureCube IrradianceTexture;
+SamplerState IrradianceTexture_sampler;
+
+Texture2D BRDFLUTTexture;
+SamplerState BRDFLUTTexture_sampler;
+
 static const float PI = 3.1415;
 
 float D(float3 N, float3 H, float a)
@@ -110,6 +119,12 @@ cbuffer PBRPSHConstants
 	int isUnlit;
 	float RoughnessFactor;
 	float MetalnessFactor;
+	int isDebugViewEnable;
+	int isDebugRoughnessTexture;
+	int isDebugMetallicTexture;
+	int isDebugAlbedoTexture;
+	int isDebugNormalTexture;
+	int isDebugIBLView;
 };
 
 struct PSInput
@@ -126,14 +141,53 @@ struct PSOutput
 	float4 Color : SV_TARGET;
 };
 
+struct ShadingInfo
+{
+	float3 Normal;
+	float3 viewDirection;
+	float3 halfwayDirection;
+	float4 baseColor;
+	float metalness;
+	float roughness;
+	float NOV;
+	float NOH;
+	float3 F0;
+};
+
+uint getTextureLevels(TextureCube textureCube)
+{
+	uint width, height, levels;
+	textureCube.GetDimensions(0, width, height, levels);
+	return levels;
+}
+
+float3 IBL(in ShadingInfo shadingInfo, float3 LightReflectionVec)
+{
+	float3 irradiance = IrradianceTexture.Sample(IrradianceTexture_sampler, shadingInfo.Normal).rgb;
+	float3 f = F(shadingInfo.halfwayDirection, shadingInfo.viewDirection, shadingInfo.F0);
+	float3 fac = lerp(1.0 - f, 0.0, shadingInfo.metalness);
+	float3 diffuseColor = fac * shadingInfo.baseColor.rgb * irradiance;
+	uint levels = getTextureLevels(PreFilterCubeMapTexture);
+	float3 preFilterValue = PreFilterCubeMapTexture.SampleLevel(PreFilterCubeMapTexture_sampler, LightReflectionVec, shadingInfo.roughness * levels).rgb;
+	float2 brdfValue = BRDFLUTTexture.Sample(BRDFLUTTexture_sampler, float2(shadingInfo.NOV, shadingInfo.roughness)).rg;
+	float3 specularColor = (shadingInfo.F0 * brdfValue.x + brdfValue.y) * preFilterValue;
+	return diffuseColor + specularColor;
+}
+
+float3 GetNormal(in PSInput PSIn)
+{
+	float3 normalT = normalize(NormalTexture.Sample(NormalTexture_sampler, PSIn.TexCoords).xyz * 2.0f - 1.0f);
+	float3 normalW = normalize(mul(PSIn.TBN, normalT));
+	return normalW;
+}
+
 void main(in PSInput PSIn, out PSOutput PSOut)
 {
 	float4 albedoColor = AlbedoTexture.Sample(AlbedoTexture_sampler, PSIn.TexCoords);
 	float metalness = MetallicTexture.Sample(MetallicTexture_sampler, PSIn.TexCoords).x * MetalnessFactor;
 	float roughness = RoughnessTexture.Sample(RoughnessTexture_sampler, PSIn.TexCoords).x * RoughnessFactor;
 
-	float3 normalT = normalize(NormalTexture.Sample(NormalTexture_sampler, PSIn.TexCoords).xyz * 2.0f - 1.0f);
-	float3 normalW = normalize(mul(PSIn.TBN, normalT));
+	float3 normalW = GetNormal(PSIn);
 
 	float3 DirectionalLightDirection = normalize(-DirectionalLight.Direction);
 	float3 viewDirection = normalize(ViewPosition - PSIn.FragPosition.xyz);
@@ -147,6 +201,44 @@ void main(in PSInput PSIn, out PSOutput PSOut)
 	float g = G(normalW, viewDirection, DirectionalLightDirection, pow((roughness + 1.0f), 2.0f) / 8.0f);
 	float3 sbrdf = d * f * g / (4.0f * max(NOV * NOL, 0.01f));
 	float3 dbrdf = lerp(float3(1, 1, 1) - f, float3(0, 0, 0), metalness) * albedoColor.xyz;
-	float3 color = (dbrdf + sbrdf) * NOL;
-	PSOut.Color = float4(color, 1.0f);
+	float3 DirectionalLightColor = (dbrdf + sbrdf) * NOL;
+
+	ShadingInfo shadingInfo;
+	shadingInfo.baseColor = albedoColor;
+	shadingInfo.metalness = metalness;
+	shadingInfo.roughness = roughness;
+	shadingInfo.Normal = normalW;
+	shadingInfo.viewDirection = viewDirection;
+	shadingInfo.halfwayDirection = halfwayDirection;
+	shadingInfo.F0 = lerp(float3(1.0f, 1.0f, 1.0f) * 0.04f, albedoColor.xyz, metalness);
+	shadingInfo.NOV = NOV;
+	shadingInfo.NOH = NOH;
+
+	float3 IBLColor = IBL(shadingInfo, reflect(DirectionalLightDirection, shadingInfo.Normal));
+
+	PSOut.Color = float4(DirectionalLightColor + IBLColor, 1.0f);
+
+	if (isDebugViewEnable > 0)
+	{
+		if (isDebugAlbedoTexture > 0)
+		{
+			PSOut.Color = albedoColor;
+		}
+		if (isDebugMetallicTexture > 0)
+		{
+			PSOut.Color = float4(1.0, 1.0, 1.0, 1.0) * metalness;
+		}
+		if (isDebugRoughnessTexture > 0)
+		{
+			PSOut.Color = float4(1.0, 1.0, 1.0, 1.0) * roughness;
+		}
+		if (isDebugNormalTexture > 0)
+		{
+			PSOut.Color = float4(normalW, 1.0);
+		}
+		if (isDebugIBLView > 0)
+		{
+			PSOut.Color = float4(IBLColor, 1.0);
+		}
+	}
 }

@@ -1,5 +1,3 @@
-//#include "App.h"
-
 #include <Foundation/Foundation.hpp>
 #include <spdlog/spdlog.h>
 #include "Renderer/DiligentRenderer.hpp"
@@ -12,7 +10,6 @@ int main(int arg, char** args)
 {
 	ks::Application::Init(arg, args);
 	spdlog::set_level(spdlog::level::trace);
-	//FApp App(arg, args);
 
 	GLFWGUISystem::FCreateInfo info;
 

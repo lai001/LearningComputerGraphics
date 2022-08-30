@@ -43,6 +43,7 @@ public:
 
 	Diligent::RefCntAutoPtr<Diligent::IShader> VertexShader(const std::string& Name);
 	Diligent::RefCntAutoPtr<Diligent::IShader> FragmentShader(const std::string& Name);
+	Diligent::RefCntAutoPtr<Diligent::IShader> ComputeShader(const std::string& Name);
 
 	void ClearDepth();
 	void ClearColor();
@@ -121,8 +122,6 @@ public:
 
 	ks::PixelBuffer* CreatePixelBuffer(Diligent::ITexture* Texture);
 
-	std::array<ks::PixelBuffer*, 6> CreateCubeMapPixelBuffers(
-		const unsigned int TargetWidth,
-		const unsigned int TargetHeight,
-		const ks::PixelBuffer& EquirectangularHDRPixelBuffer);
+	std::array<ks::PixelBuffer*, 6> CreatePixelBufferFrom2DArrayTexture(Diligent::ITexture& CubeTexture, const unsigned int MipLevel = 0);
+
 };

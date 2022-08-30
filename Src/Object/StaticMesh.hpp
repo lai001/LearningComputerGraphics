@@ -21,6 +21,7 @@ struct FMeshVertex
 
 struct FStaticSubMesh
 {
+	std::string Name;
 	std::vector<FMeshVertex> Vertices;
 	std::vector<unsigned int> Indices;
 	std::vector<FTextureDescription*> Textures;

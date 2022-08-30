@@ -38,6 +38,16 @@ const FStaticMesh * FPBRStaticMeshDrawable::GetStaticMesh() const noexcept
 	return StaticMesh;
 }
 
+void FPBRStaticMeshDrawable::SetIBLBake(const FIBLBake* IBLBake) noexcept
+{
+	this->IBLBake = IBLBake;
+}
+
+const FIBLBake* FPBRStaticMeshDrawable::GetIBLBake() noexcept
+{
+	return IBLBake;
+}
+
 void FPBRStaticMeshDrawable::CreateResource(FDiligentRenderer * Renderer)
 {
 	SubStaticMeshDrawableDatas.clear();

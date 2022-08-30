@@ -3,9 +3,83 @@
 #include "Util/Util.hpp"
 #include "ImageIO/ImageIO.hpp"
 
+void SaveIBLBake(const FIBLBake* Bake,
+	const std::string& OutputFolderPath)
+{
+	assert(Bake);
+	const std::string RootDirPath = fmt::format("{}/{}", OutputFolderPath, "IBLBake");
+	bool Status = ks::File::createDirectory(RootDirPath);
+
+	{
+		const ks::PixelBuffer* PixelBuffer = Bake->GetBRDFLUTMapPixelBuffer();
+		const std::string DirPath = fmt::format("{}/{}", RootDirPath, "BRDFLUTMap");
+		bool Status = ks::File::createDirectory(DirPath);
+		const std::string FileName = "output.png";
+		const std::string FilePath = DirPath + "/" + FileName;
+		ImageIO::SaveImage(*PixelBuffer, FilePath);
+	}
+
+	{
+		std::array<ks::PixelBuffer*, 6> PixelBuffers = Bake->GetIrradianceCubeMapPixelBuffers();
+		const std::string DirPath = fmt::format("{}/{}", RootDirPath, "IrradianceCubeMap");
+		bool Status = ks::File::createDirectory(DirPath);
+		for (size_t i = 0; i < PixelBuffers.size(); i++)
+		{
+			const std::string FileName = fmt::format("output{}.png", i);
+			const std::string FilePath = DirPath + "/" + FileName;
+			ImageIO::SaveImage(*PixelBuffers[i], FilePath);
+		}
+	}
+
+	{
+		std::array<ks::PixelBuffer*, 6> PixelBuffers = Bake->GetEnvironmentCubeMapPixelBuffers();
+		const std::string DirPath = fmt::format("{}/{}", RootDirPath, "EnvironmentCubeMap");
+		bool Status = ks::File::createDirectory(DirPath);
+		for (size_t i = 0; i < PixelBuffers.size(); i++)
+		{
+			const std::string FileName = fmt::format("output{}.png", i);
+			const std::string FilePath = DirPath + "/" + FileName;
+			ImageIO::SaveImage(*PixelBuffers[i], FilePath);
+		}
+	}
+
+	{
+		for (size_t MipLevel = 0; MipLevel < Bake->GetPreFilterCubeMapPixelBuffers().size(); MipLevel++)
+		{
+			const std::string DirPath = fmt::format("{}/{}{}", RootDirPath, "MipmapLevel", MipLevel);
+			bool Status = ks::File::createDirectory(DirPath);
+			std::array<ks::PixelBuffer*, 6> PixelBuffers = Bake->GetPreFilterCubeMapPixelBuffers()[MipLevel];
+			for (size_t i = 0; i < PixelBuffers.size(); i++)
+			{
+				const std::string FileName = fmt::format("output{}.png", i);
+				const std::string FilePath = DirPath + "/" + FileName;
+				bool Status = ImageIO::SaveImage(*PixelBuffers[i], FilePath);
+			}
+		}
+	}
+}
+
+FIBLBake* IBLBake(FDiligentRenderer& Renderer,
+		const std::string& InputPath)
+{
+	auto EquirectangularHDRPixelBuffer = std::unique_ptr<ks::PixelBuffer>(ImageIO::ReadImageFromFilePath(InputPath));
+	assert(EquirectangularHDRPixelBuffer);
+	FIBLBake::BakeInfo Info;
+	Info.BRDFLUTMapLength = 128;
+	Info.EnvironmentCubeMapLength = 512;
+	Info.IrradianceCubeMapLength = 64;
+	Info.PreFilterCubeMapLength = 1024;
+	Info.PreFilterCubeMapMaxMipmapLevel = 6;
+	FIBLBake* Bake = new FIBLBake(Info, *EquirectangularHDRPixelBuffer, Renderer);
+	return Bake;
+}
+
 FScene::FScene(FDiligentRenderer* Renderer, GLFWInputSystem* InputSystem)
 	:Renderer(Renderer), InputSystem(InputSystem)
 {
+	Bake = std::unique_ptr<FIBLBake>(IBLBake(*Renderer, ks::Application::getResourcePath("Static/neon_photostudio_4k.hdr")));
+	//SaveIBLBake(Bake.get(), ks::Application::getAppDir());
+
 	LoadModels();
 	CreateResources();
 	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.PointLight.Position = glm::vec3(0.0f, 0.0f, 1.5f);
@@ -143,7 +217,10 @@ void FScene::RenderPBR(double RunningTime)
 	PBRPipeline->PBRPSHConstants.SpotLight.Position = Camera.GetPosition();
 	PBRPipeline->PBRPSHConstants.SpotLight.Direction = Camera.GetCameraFront();
 	PBRPipeline->PBRPSHConstants.ViewPosition = Camera.GetPosition();
-
+	if (Bake)
+	{
+		PBRStaticMeshDrawable->SetIBLBake(Bake.get());
+	}
 	PBRPipeline->Render(&Camera, PBRStaticMeshDrawable);
 	SkyBoxPipeline->Render(RunningTime, &Camera, SkyBoxDrawable);
 }

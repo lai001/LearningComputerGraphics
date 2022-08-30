@@ -37,6 +37,9 @@ void FPBRPipeline::CreateResources()
 		"MetallicTexture",
 		"RoughnessTexture",
 		"AmbientOcclusionTexture",
+		"IrradianceTexture",
+		"BRDFLUTTexture",
+		"PreFilterCubeMapTexture",
 	};
 	Renderer->PipelineResourceLayoutDesc(
 		Diligent::SHADER_TYPE_PIXEL,
@@ -102,11 +105,45 @@ void FPBRPipeline::Render(
 			{
 				Diligent::ITextureView* DiffuseTextureView = FUtil::Back<Diligent::ITextureView*>({
 					SubStaticMeshDrawableData.GetTextureView(Args.second),
-					Renderer->GetDefaultTexture2D()->GetDefaultView(Diligent::TEXTURE_VIEW_TYPE::TEXTURE_VIEW_SHADER_RESOURCE)
+					Renderer->GetDefaultTexture2D()->GetDefaultView(Diligent::TEXTURE_VIEW_SHADER_RESOURCE)
 					});
 				if (DiffuseTextureView)
 				{
 					ResourceVariable->Set(DiffuseTextureView, Diligent::SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+				}
+			}
+		}
+
+		if (const FIBLBake* IBLBake = PBRStaticMeshDrawable->GetIBLBake())
+		{
+			if (Diligent::RefCntAutoPtr<Diligent::ITexture> IrradianceCubeMapTexture = IBLBake->GetIrradianceCubeMapTexture())
+			{
+				if (Diligent::ITextureView * TextureView = IrradianceCubeMapTexture->GetDefaultView(Diligent::TEXTURE_VIEW_SHADER_RESOURCE))
+				{
+					if (Diligent::IShaderResourceVariable* ResourceVariable = SRB->GetVariableByName(Diligent::SHADER_TYPE_PIXEL, "IrradianceTexture"))
+					{
+						ResourceVariable->Set(TextureView, Diligent::SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+					}
+				}
+			}
+			if (Diligent::RefCntAutoPtr<Diligent::ITexture> BRDFLUTMapTexture = IBLBake->GetBRDFLUTMapTexture())
+			{
+				if (Diligent::ITextureView* TextureView = BRDFLUTMapTexture->GetDefaultView(Diligent::TEXTURE_VIEW_SHADER_RESOURCE))
+				{
+					if (Diligent::IShaderResourceVariable* ResourceVariable = SRB->GetVariableByName(Diligent::SHADER_TYPE_PIXEL, "BRDFLUTTexture"))
+					{
+						ResourceVariable->Set(TextureView, Diligent::SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+					}
+				}
+			}
+			if (Diligent::RefCntAutoPtr<Diligent::ITexture> PreFilterCubeMapTexture = IBLBake->GetPreFilterCubeMapTexture())
+			{
+				if (Diligent::ITextureView* TextureView = PreFilterCubeMapTexture->GetDefaultView(Diligent::TEXTURE_VIEW_SHADER_RESOURCE))
+				{
+					if (Diligent::IShaderResourceVariable* ResourceVariable = SRB->GetVariableByName(Diligent::SHADER_TYPE_PIXEL, "PreFilterCubeMapTexture"))
+					{
+						ResourceVariable->Set(TextureView, Diligent::SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE);
+					}
 				}
 			}
 		}

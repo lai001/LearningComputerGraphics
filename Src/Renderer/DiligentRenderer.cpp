@@ -1,8 +1,14 @@
 #include "DiligentRenderer.hpp"
+#include <functional>
 #include <assert.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <Foundation/Foundation.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <spdlog/spdlog.h>
+#include <d3d11.h>
+#include "Util/Math.hpp"
+#include "Util/Util.hpp"
 
 FDiligentRenderer::FDiligentRenderer(HWND hWnd)
 	:hWnd(hWnd)
@@ -44,6 +50,9 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 	case RENDER_DEVICE_TYPE_D3D11:
 	{
 		EngineD3D11CreateInfo EngineCI;
+		EngineCI.EnableValidation = true;
+		EngineCI.SetValidationLevel(VALIDATION_LEVEL_2);
+		EngineCI.Features.ComputeShaders = DEVICE_FEATURE_STATE_ENABLED;
 #    if ENGINE_DLL
 		auto* GetEngineFactoryD3D11 = LoadGraphicsEngineD3D11();
 #    endif
@@ -55,7 +64,6 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 	break;
 #endif
 
-
 #if D3D12_SUPPORTED
 	case RENDER_DEVICE_TYPE_D3D12:
 	{
@@ -63,7 +71,7 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 		auto GetEngineFactoryD3D12 = LoadGraphicsEngineD3D12();
 #    endif
 		EngineD3D12CreateInfo EngineCI;
-
+		EngineCI.Features.ComputeShaders = DEVICE_FEATURE_STATE_ENABLED;
 		auto* pFactoryD3D12 = GetEngineFactoryD3D12();
 		pFactoryD3D12->CreateDeviceAndContextsD3D12(EngineCI, &Device, &ImmediateContext);
 		Win32NativeWindow Window{ hWnd };
@@ -72,7 +80,6 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 	break;
 #endif
 
-
 #if GL_SUPPORTED
 	case RENDER_DEVICE_TYPE_GL:
 	{
@@ -80,15 +87,13 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 		auto GetEngineFactoryOpenGL = LoadGraphicsEngineOpenGL();
 #    endif
 		auto* pFactoryOpenGL = GetEngineFactoryOpenGL();
-
 		EngineGLCreateInfo EngineCI;
+		EngineCI.Features.ComputeShaders = DEVICE_FEATURE_STATE_ENABLED;
 		EngineCI.Window.hWnd = hWnd;
-
 		pFactoryOpenGL->CreateDeviceAndSwapChainGL(EngineCI, &Device, &ImmediateContext, SCDesc, &SwapChain);
 	}
 	break;
 #endif
-
 
 #if VULKAN_SUPPORTED
 	case RENDER_DEVICE_TYPE_VULKAN:
@@ -97,19 +102,14 @@ bool FDiligentRenderer::InitializeDiligentEngine(HWND hWnd)
 		auto GetEngineFactoryVk = LoadGraphicsEngineVk();
 #    endif
 		EngineVkCreateInfo EngineCI;
-
+		EngineCI.Features.ComputeShaders = DEVICE_FEATURE_STATE_ENABLED;
 		auto* pFactoryVk = GetEngineFactoryVk();
 		pFactoryVk->CreateDeviceAndContextsVk(EngineCI, &Device, &ImmediateContext);
-
-		if (!SwapChain && hWnd != nullptr)
-		{
-			Win32NativeWindow Window{ hWnd };
-			pFactoryVk->CreateSwapChainVk(Device, ImmediateContext, SCDesc, Window, &SwapChain);
-		}
+		Win32NativeWindow Window{ hWnd };
+		pFactoryVk->CreateSwapChainVk(Device, ImmediateContext, SCDesc, Window, &SwapChain);
 	}
 	break;
 #endif
-
 
 	default:
 		return false;
@@ -149,6 +149,22 @@ Diligent::RefCntAutoPtr<Diligent::IShader> FDiligentRenderer::FragmentShader(con
 	Device->CreateShader(ShaderCI, &Shader);
 	assert(Shader);
 	return Shader;
+}
+
+Diligent::RefCntAutoPtr<Diligent::IShader> FDiligentRenderer::ComputeShader(const std::string& Name)
+{
+	const std::string CSSource = ks::File::read(ks::Application::getResourcePath("Shader/" + Name), nullptr);
+	Diligent::ShaderCreateInfo ShaderCI;
+	ShaderCI.SourceLanguage = Diligent::SHADER_SOURCE_LANGUAGE_HLSL;
+	ShaderCI.UseCombinedTextureSamplers = true;
+	ShaderCI.Desc.ShaderType = Diligent::SHADER_TYPE_COMPUTE;
+	ShaderCI.EntryPoint = "main";
+	ShaderCI.Desc.Name = Name.c_str();
+	ShaderCI.Source = CSSource.c_str();
+	Diligent::RefCntAutoPtr<Diligent::IShader> ComputeShader;
+	Device->CreateShader(ShaderCI, &ComputeShader);
+	assert(ComputeShader);
+	return ComputeShader;
 }
 
 void FDiligentRenderer::ClearDepth()
@@ -448,8 +464,9 @@ ks::PixelBuffer * FDiligentRenderer::CreatePixelBuffer(Diligent::ITexture* Textu
 	assert(
 		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM ||
 		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM_SRGB);
+	assert(TextureDesc.Is2D() && TextureDesc.ArraySize == 1);
 
-	Diligent::MappedTextureSubresource  MappedData;
+	Diligent::MappedTextureSubresource MappedData;
 	Diligent::Box pMapRegion(0, TextureDesc.GetWidth(),0, TextureDesc.GetHeight());
 	ImmediateContext->MapTextureSubresource(Texture,
 		0,
@@ -481,44 +498,52 @@ ks::PixelBuffer * FDiligentRenderer::CreatePixelBuffer(Diligent::ITexture* Textu
 	return PixelBuffer;
 }
 
-std::array<ks::PixelBuffer*, 6> FDiligentRenderer::CreateCubeMapPixelBuffers(
-	const unsigned int TargetWidth,
-	const unsigned int TargetHeight,
-	const ks::PixelBuffer& EquirectangularHDRPixelBuffer)
+std::array<ks::PixelBuffer*, 6> FDiligentRenderer::CreatePixelBufferFrom2DArrayTexture(
+	Diligent::ITexture& CubeTexture, 
+	const unsigned int MipLevel)
 {
-	assert(EquirectangularHDRPixelBuffer.getType() == ks::PixelBuffer::FormatType::rgba8);
+	const Diligent::TextureDesc TextureDesc = CubeTexture.GetDesc();
+	assert(
+		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM ||
+		TextureDesc.Format == Diligent::TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM_SRGB);
+	assert(TextureDesc.Type == Diligent::RESOURCE_DIM_TEX_2D_ARRAY || TextureDesc.Type == Diligent::RESOURCE_DIM_TEX_CUBE);
+	assert(TextureDesc.GetArraySize() == 6);
 
-	std::array<ks::PixelBuffer*, 6> PixelBuffers;
+	std::array<ks::PixelBuffer*, 6> PixelBuffers = std::array<ks::PixelBuffer*, 6>();
 
-	for (size_t i = 0; i < PixelBuffers.size(); i++)
+	for (size_t ArraySlice = 0; ArraySlice < PixelBuffers.size(); ArraySlice++)
 	{
-		ks::PixelBuffer* PixelBuffer = new ks::PixelBuffer(TargetWidth, TargetHeight, ks::PixelBuffer::FormatType::rgba8);
-		PixelBuffers[i] = PixelBuffer;
-		for (size_t HeightIdx = 0; HeightIdx < TargetHeight; HeightIdx++)
+		Diligent::MappedTextureSubresource MappedData;
+		ImmediateContext->MapTextureSubresource(&CubeTexture,
+			MipLevel,
+			ArraySlice,
+			Diligent::MAP_TYPE::MAP_READ,
+			Diligent::MAP_FLAGS::MAP_FLAG_NONE,
+			nullptr,
+			MappedData);
+		assert(MappedData.pData);
+		const unsigned char* BufferData = reinterpret_cast<const unsigned char*>(MappedData.pData);
+		const unsigned int ComputeHeight = MappedData.DepthStride / MappedData.Stride;
+		const unsigned int ComputeWidth = TextureDesc.GetWidth() / (1 << MipLevel);
+		
+		ks::PixelBuffer* PixelBuffer = new ks::PixelBuffer(ComputeWidth,
+			ComputeHeight,
+			ks::PixelBuffer::FormatType::rgba8);
+
+		unsigned char* MutablePixelBufferData = PixelBuffer->getMutableData()[0];
+
+		for (size_t HeightIdx = 0; HeightIdx < ComputeHeight; HeightIdx++)
 		{
-			for (size_t WidthIdx = 0; WidthIdx < TargetWidth; WidthIdx++)
-			{
-				const glm::vec2 UV = glm::vec2((float)WidthIdx / (float)TargetWidth, 1.0 - (float)HeightIdx / (float)TargetHeight) * 2.0f - 1.0f;
-				glm::vec3 SamplePicker;
-				if (i == 0) { SamplePicker = glm::vec3(1.0f, UV.y, -UV.x); }
-				if (i == 1) { SamplePicker = glm::vec3(-1.0, UV.y, UV.x); }
-				if (i == 2) { SamplePicker = glm::vec3(UV.x, 1.0, -UV.y); }
-				if (i == 3) { SamplePicker = glm::vec3(UV.x, -1.0, UV.y); }
-				if (i == 4) { SamplePicker = glm::vec3(UV.x, UV.y, 1.0); }
-				if (i == 5) { SamplePicker = glm::vec3(-UV.x, UV.y, -1.0); }
-				SamplePicker = glm::normalize(SamplePicker);
-				const unsigned char * ImmutableData = EquirectangularHDRPixelBuffer.getImmutableData()[0];
-				unsigned int SourcePixelIndexX = ((atan2(SamplePicker.z, SamplePicker.x) + M_PI) / (M_PI * 2.0f)) * EquirectangularHDRPixelBuffer.getWidth();
-				unsigned int SourcePixelIndexY = (acos(SamplePicker.y) / M_PI) * EquirectangularHDRPixelBuffer.getHeight();
-				SourcePixelIndexX = glm::clamp<unsigned int>(SourcePixelIndexX, 0, EquirectangularHDRPixelBuffer.getWidth() - 1);
-				SourcePixelIndexY = glm::clamp<unsigned int>(SourcePixelIndexY, 0, EquirectangularHDRPixelBuffer.getHeight() - 1);
-				const unsigned int SourcePixelIndex = SourcePixelIndexY * EquirectangularHDRPixelBuffer.getWidth() + SourcePixelIndexX;
-				const unsigned int TargetPixelIndex = HeightIdx * TargetWidth + WidthIdx;
-				memcpy(PixelBuffer->getMutableData()[0] + (TargetPixelIndex * 4),
-					ImmutableData + (SourcePixelIndex * 4),
-					4);
-			}
+			const size_t DstOffset = HeightIdx * ComputeWidth * 4;
+			const size_t SrcOffset = HeightIdx * MappedData.Stride;
+			const size_t CopyBytesCount = ComputeWidth * 4;
+			memcpy(MutablePixelBufferData + DstOffset,
+				BufferData + SrcOffset,
+				CopyBytesCount);
 		}
+
+		ImmediateContext->UnmapTextureSubresource(&CubeTexture, MipLevel, ArraySlice);
+		PixelBuffers[ArraySlice] = PixelBuffer;
 	}
 
 	return PixelBuffers;

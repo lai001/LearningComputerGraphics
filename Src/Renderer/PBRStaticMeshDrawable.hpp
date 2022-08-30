@@ -5,6 +5,7 @@
 #include "Object/StaticMesh.hpp"
 #include "DiligentRenderer.hpp"
 #include "SubStaticMeshDrawableData.hpp"
+#include "IBLBake.hpp"
 
 class FPBRStaticMeshDrawable
 {
@@ -12,6 +13,7 @@ private:
 	const FStaticMesh* StaticMesh = nullptr;
 	std::vector<FSubStaticMeshDrawableData> SubStaticMeshDrawableDatas;
 	void CreateResource(FDiligentRenderer * Renderer);
+	const FIBLBake* IBLBake = nullptr;
 
 public:
 	FPBRStaticMeshDrawable(FDiligentRenderer * Renderer, const FStaticMesh* StaticMesh);
@@ -23,4 +25,8 @@ public:
 	Diligent::DrawIndexedAttribs GetDrawAttrs(const FSubStaticMeshDrawableData& SubStaticMeshDrawableData) const noexcept;
 
 	const FStaticMesh* GetStaticMesh() const noexcept;
+
+	void SetIBLBake(const FIBLBake* IBLBake) noexcept;
+
+	const FIBLBake* GetIBLBake() noexcept;
 };
