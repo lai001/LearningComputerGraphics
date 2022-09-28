@@ -63,6 +63,10 @@ private:
 
 	void SaveBackBufferTexture();
 
+	void ProcessShadow(double RunningTime) noexcept;
+
+	void RenderShadowMap(double RunningTime) noexcept;
+
 public:
 	FScene(FDiligentRenderer* Renderer, GLFWInputSystem* InputSystem);
 	~FScene();

@@ -77,7 +77,7 @@ FIBLBake* IBLBake(FDiligentRenderer& Renderer,
 FScene::FScene(FDiligentRenderer* Renderer, GLFWInputSystem* InputSystem)
 	:Renderer(Renderer), InputSystem(InputSystem)
 {
-	Bake = std::unique_ptr<FIBLBake>(IBLBake(*Renderer, ks::Application::getResourcePath("Static/neon_photostudio_4k.hdr")));
+	//Bake = std::unique_ptr<FIBLBake>(IBLBake(*Renderer, ks::Application::getResourcePath("Static/neon_photostudio_4k.hdr")));
 	//SaveIBLBake(Bake.get(), ks::Application::getAppDir());
 
 	LoadModels();
@@ -148,25 +148,19 @@ void FScene::LoadModels()
 
 void FScene::Render(double RunningTime)
 {
-	RenderPBR(RunningTime);
-	return;
+	//RenderPBR(RunningTime);
+	//return;
 
-	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.SpotLight.Position =
-		Camera.GetPosition();
-	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.SpotLight.Direction =
-		Camera.GetCameraFront();
-	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.ViewPosition =
-		Camera.GetPosition();
+	ProcessShadow(RunningTime);
+
+	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.SpotLight.Position = Camera.GetPosition();
+	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.SpotLight.Direction = Camera.GetCameraFront();
+	PhongShadingPSHConstantsResource->PhongShadingPSHConstants.ViewPosition = Camera.GetPosition();
 	PhongShadingPSHConstantsResource->Map();
 
 	SkeletonMesh->RunningTime = RunningTime;
 	SkeletonMesh->UpdateBoneTransform();
-	PointLightIndicatorMesh->Position =
-		PhongShadingPSHConstantsResource->PhongShadingPSHConstants.PointLight.Position;
-
-	const std::vector<FStaticMeshDrawable*> ShadowStaticMeshDrawables = {
-		StaticMeshDrawable,
-	};
+	PointLightIndicatorMesh->Position = PhongShadingPSHConstantsResource->PhongShadingPSHConstants.PointLight.Position;
 
 	const std::vector<FStaticMeshDrawable*> StaticMeshDrawables = {
 		PointLightIndicatorMeshDrawable,
@@ -174,38 +168,21 @@ void FScene::Render(double RunningTime)
 		FloorStaticMeshDrawable,
 	};
 
-	const glm::mat4 LightProjection = DirectionLightShadowMapInfo.GetProjetionMat();
-	const glm::mat4 LightView = DirectionLightShadowMapInfo.GetViewMat();
-	DirectionLightDepthMapPipeline->DirectionLightDepthMapVSHConstants.LightSpaceMat =
-		LightProjection * LightView;
-	DirectionLightDepthMapPipeline->NewFrame();
-
-	for (size_t i = 0; i < ShadowStaticMeshDrawables.size(); i++)
-	{
-		DirectionLightDepthMapPipeline->Render(RunningTime, ShadowStaticMeshDrawables[i]);
-	}
-
 	Renderer->SetRenderTarget();
 	FStaticMeshPipeline::FRenderInfo RenderInfo;
 	RenderInfo.RunningTime = RunningTime;
 	RenderInfo.Camera = &Camera;
-	StaticMeshPipeline->PhongShadingVSHConstants.LightSpaceMatrix =
-		DirectionLightDepthMapPipeline->DirectionLightDepthMapVSHConstants.LightSpaceMat;
+	RenderInfo.DirctionLightShadowMap = DirectionLightDepthMapPipeline->GetResourceView();
+	StaticMeshPipeline->PhongShadingVSHConstants.LightSpaceMatrix = DirectionLightDepthMapPipeline->DirectionLightDepthMapVSHConstants.LightSpaceMat;
 	for (size_t i = 0; i < StaticMeshDrawables.size(); i++)
 	{
-		RenderInfo.DirctionLightShadowMap = DirectionLightDepthMapPipeline->GetResourceView();
 		RenderInfo.StaticMeshDrawable = StaticMeshDrawables[i];
 		StaticMeshPipeline->Render(RenderInfo);
 	}
 	SkeletonMeshPipeline->Render(RunningTime, &Camera, SkeletonMeshDrawable);
 	SkyBoxPipeline->Render(RunningTime, &Camera, SkyBoxDrawable);
 
-	std::array<glm::vec2, 4> Quad;
-	Quad[0] = glm::vec2(-1.0, 1.0);
-	Quad[1] = glm::vec2(-0.5, 1.0);
-	Quad[2] = glm::vec2(-1.0, 0.5);
-	Quad[3] = glm::vec2(-0.5, 0.5);
-	Image2DPipeline->Render(Quad, DirectionLightDepthMapPipeline->GetTexture());
+	RenderShadowMap(RunningTime);
 }
 
 void FScene::RenderPBR(double RunningTime)
@@ -248,6 +225,32 @@ void FScene::SaveBackBufferTexture()
 	const std::unique_ptr<ks::PixelBuffer> PixelBuffer =
 		std::unique_ptr<ks::PixelBuffer>(Renderer->CreatePixelBuffer(StagingTexture));
 	ImageIO::SaveImage(*PixelBuffer, "output.png");
+}
+
+void FScene::ProcessShadow(double RunningTime) noexcept
+{
+	const std::vector<FStaticMeshDrawable*> ShadowStaticMeshDrawables = {
+		StaticMeshDrawable,
+		FloorStaticMeshDrawable,
+	};
+	const glm::mat4 LightProjection = DirectionLightShadowMapInfo.GetProjetionMat();
+	const glm::mat4 LightView = DirectionLightShadowMapInfo.GetViewMat();
+	DirectionLightDepthMapPipeline->DirectionLightDepthMapVSHConstants.LightSpaceMat = LightProjection * LightView;
+	DirectionLightDepthMapPipeline->NewFrame();
+	for (size_t i = 0; i < ShadowStaticMeshDrawables.size(); i++)
+	{
+		DirectionLightDepthMapPipeline->Render(RunningTime, ShadowStaticMeshDrawables[i]);
+	}
+}
+
+void FScene::RenderShadowMap(double RunningTime) noexcept
+{
+	std::array<glm::vec2, 4> Quad;
+	Quad[0] = glm::vec2(-1.0, 1.0);
+	Quad[1] = glm::vec2(-0.5, 1.0);
+	Quad[2] = glm::vec2(-1.0, 0.5);
+	Quad[3] = glm::vec2(-0.5, 0.5);
+	Image2DPipeline->Render(Quad, DirectionLightDepthMapPipeline->GetTexture());
 }
 
 void FScene::LoadUI(FMainView & MainView)

@@ -11,7 +11,7 @@ struct FDirectionLightShadowMapInfo
 	float NearZ = 1.0f;
 	float FarZ = 10.0f;
 
-	glm::vec3 Eye = glm::vec3(0.0f, 4.0f, -6.5f);
+	glm::vec3 Eye = glm::vec3(0.0f, 4.0f, -5.0f);
 	glm::vec3 Center = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 Up = glm::vec3(0.0f, 1.0f, 0.0f);
 

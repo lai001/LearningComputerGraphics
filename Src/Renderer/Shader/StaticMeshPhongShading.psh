@@ -225,11 +225,12 @@ float4 PhongCompositionLightColor(FDirectionalLight iDirectionalLight,
 float ShadowCalculation(float4 fragPosLightSpace)
 {
 	float3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+	float currentDepth = projCoords.z;
     projCoords = projCoords * 0.5 + 0.5;
-    float closestDepth = DirctionLightShadowMapTexture.Sample(DirctionLightShadowMapTexture_sampler, projCoords.xy).r; 
-    float currentDepth = projCoords.z;
-    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
-	if(projCoords.z > 1.0)
+    float closestDepth = DirctionLightShadowMapTexture.Sample(DirctionLightShadowMapTexture_sampler, float2(projCoords.x, 1.0 - projCoords.y)).r;
+	float bias = 0.005;
+    float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	if(currentDepth > 1.0)
 	{
         shadow = 0.0;
 	}
